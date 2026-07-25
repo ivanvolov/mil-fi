@@ -14,7 +14,7 @@ import './styles/index.css';
 /** Read a persisted string field out of the zustand-persisted store, if any. */
 function readPersistedString(field: 'lastLayerSlug'): string | null {
   try {
-    const raw = localStorage.getItem('hoc-orchestration-ui');
+    const raw = localStorage.getItem('mil-fi-ui');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     const v = parsed?.state?.[field];

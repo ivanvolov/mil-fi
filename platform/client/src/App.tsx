@@ -5,6 +5,7 @@ import { useLayers } from './queries/useLayers';
 import { TopBar } from './components/topbar/TopBar';
 import { LeftRail } from './components/leftrail/LeftRail';
 import { MapHost } from './components/map/MapHost';
+import { Map3DHost } from './components/map/Map3DHost';
 import { RightInspector } from './components/inspector/RightInspector';
 import { EditorMount } from './components/dialogs/EditorMount';
 import { AppRail } from './components/AppRail';
@@ -15,6 +16,11 @@ export function App() {
   const layersQ = useLayers();
   const layerQ = useLayerFull(slug);
   const setLastLayerSlug = useUiStore((s) => s.setLastLayerSlug);
+  const mapMode = useUiStore((s) => s.mapMode);
+  // The threat simulator + asset planner overlays are Leaflet-only — while either is
+  // active, fall back to the 2D map so those workflows keep working from 3D mode.
+  const simulating = useUiStore((s) => s.simStage !== 'idle');
+  const planning = useUiStore((s) => s.assetStage !== 'idle');
   useEffect(() => { setLastLayerSlug(slug); }, [slug, setLastLayerSlug]);
 
   // Wait for the layer list before deciding whether the requested slug exists.
@@ -60,7 +66,9 @@ export function App() {
         <AppRail />
         <LeftRail data={data} />
         <main id="map-shell" className="flex-1 relative min-w-0">
-          <MapHost data={data} />
+          {mapMode === '3d' && !simulating && !planning
+            ? <Map3DHost key={data.layer._id} data={data} />
+            : <MapHost data={data} />}
         </main>
         <RightInspector data={data} />
       </div>

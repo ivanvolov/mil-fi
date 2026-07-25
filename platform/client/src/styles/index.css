@@ -15,6 +15,12 @@ body { background: #0d1117; color: #e7e9ea; }
 }
 .leaflet-control-zoom a:hover { color: #06b6d4 !important; border-color: #06b6d4 !important; }
 
+/* ============== maplibre (3D map) ============== */
+.hoc-map3d { background: #0a0d12; }
+.hoc-map3d .maplibregl-ctrl-attrib { font-size: 10px; opacity: 0.75; }
+/* the shared marker CSS positions children absolutely off a 0×0 anchor — same trick as Leaflet divIcons */
+.hoc-map3d .maplibregl-marker { width: 0; height: 0; cursor: pointer; }
+
 /* ============== marker divIcon styles (ported from mockup/screen-1.html) ============== */
 .hoc-marker, .hoc-crew-marker, .hoc-threat-marker { background: transparent; border: 0; }
 .hoc-marker .marker-compact, .hoc-marker .marker-full,

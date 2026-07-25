@@ -8,5 +8,5 @@ if (!config.telegramBotToken || !config.telegramChatId) {
   process.exit(1);
 }
 
-await postToTelegram('🧪 test message from hoc-orchestration diag script (dev env)');
+await postToTelegram('🧪 test message from mil-fi diag script (dev env)');
 console.log('[test-tg] sent ok');

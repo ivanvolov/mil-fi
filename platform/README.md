@@ -1,29 +1,18 @@
-# orchestration-app
+# platform
 
-Air-defense orchestration sim. MongoDB-backed React app for placing, editing, and assigning interceptors / threats / crews on per-layer scenarios.
+Air-defense orchestration map. MongoDB-backed React app for placing, editing, and assigning interceptors / threats / crews on per-layer scenarios. Serves as the operational base the MilFi settlement layer plugs into.
 
 ## Layout
 
 ```
-orchestration-app/
+platform/
 ├─ algos/                      the three algorithms (orchestration, placement, threat-placement) — see algos/README.md
 ├─ shared/                     zod schemas + TS types + distance util shared by client, server, algos
 ├─ server/                     Node + Fastify + MongoDB (TypeScript, tsx in dev)
 ├─ client/                     React + Vite + TypeScript + react-leaflet
-├─ mockup/                     frozen legacy HTML mockup (reference + JSON-export escape hatch)
-├─ Makefile                    single operator entrypoint (make dev, make build, etc.)
-└─ local.pointer.md            where domain research lives on disk (droneBox artifacts)
+├─ mockup/                     static HTML reference (JSON-export escape hatch)
+└─ Makefile                    single operator entrypoint (make dev, make build, etc.)
 ```
-
-## Where the research lives
-
-Domain source material (envelope numbers, sensor uncertainty, Shahed variant tables, original mockup spec) is **not in this repo**. It lives at:
-
-```
-/Users/ivanvolovik/p🗂️/Carcas/projects/droneBox/artifacts/orchestration-app/
-```
-
-Read `local.pointer.md` at the repo root for the full convention. Short version: any file named `local.pointer.md` in a project points via YAML frontmatter to an absolute local directory that holds material the project depends on. It parallels `github.pointer.md` (which points at a git URL). Both are documentation, not auto-materialized.
 
 ## Run (dev) — one command
 
@@ -92,17 +81,6 @@ Expected: `12 / 3 / 2 / 16 / 1 / 7 / 1`.
 - **Edit mode toggle** in the topbar enables draggable map markers and threat-waypoint edit handles (handles render only for the selected threat to keep the map clean).
 - **Crew-required indicator:** any interceptor whose type has `requiresCrew=true` and zero threads gets a `NO CREW · NOT OPERATIONAL` chip in the map marker, left rail, and inspector. MFG types (`requiresCrew=false`) never show it.
 
-## Phased delivery (what was built)
-
-- **Phase 0** — JSON export button on the legacy mockup as an escape hatch.
-- **Phase 1** — backend skeleton, 8 collections, indexes, seed of VZIL 1 from the mockup data.
-- **Phase 2** — React skeleton, read-only render visually identical to the mockup.
-- **Phase 3** — full CRUD endpoints, optimistic concurrency, drag-to-persist for interceptors / teams / threats.
-- **Phase 4** — instance/type edit dialogs with affected-count confirmation.
-- **Phase 5** — layer switcher, clone-layer button, plus-button popovers, crew-required indicators.
-- **Phase 6** — read-only types catalog at `/types`. (Type create-from-scratch is a follow-up; type edits happen via the per-instance edit dialog today.)
-- **Phase 7** — README, cleanup.
-
 ## Algorithms
 
 Three: **orchestration** (assigns launchers to threats), **placement** (plans launcher + crew positions), **threat-placement** (spawns simulated threats). Each lives in `algos/<name>/` with its own `README.md` explaining what it optimizes for. Start at [`algos/README.md`](./algos/README.md).
@@ -142,7 +120,7 @@ That user is locked out immediately. Others are unaffected.
 Single Web Service. The Fastify process serves both the API and the built React app from the same origin (no CORS, no gateway).
 
 1. **Push the repo to GitHub** (private — even though no secrets are committed, live invite codes pass through Render logs).
-2. **In the Render dashboard**: New → Blueprint → connect this repo. Render reads `render.yaml` and provisions the two Web Services (`hoc-orchestration` + `hoc-orchestration-staging`).
+2. **In the Render dashboard**: New → Blueprint → connect this repo. Render reads `render.yaml` and provisions the two Web Services (`mil-fi` + `mil-fi-staging`).
 3. **Set the secret env vars** on each service in the Render dashboard (they're declared `sync: false` in `render.yaml`): `MONGODB_URI`, `SESSION_SECRET`, and optionally `OPENAI_API_KEY`, `RENDER_WEBHOOK_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` — see below.
 4. **Wait for the first deploy**. `npm run build:all` builds both apps; `npm start` boots Fastify (serving `client/dist` as static + `/api/v1/*` as the API).
 5. **Open Render Shell** on the service and run:

@@ -1,7 +1,7 @@
 services:
   # Production — auto-deploys from `main`. Never push here directly.
   - type: web
-    name: hoc-orchestration
+    name: mil-fi
     runtime: node
     plan: free
     region: frankfurt
@@ -40,7 +40,7 @@ services:
   # Fastify, wiping this DB and copying prod into it. See server/src/lib/refreshDb.ts.
   # Also fires a Telegram boot notification via server/src/lib/telegram.ts.
   - type: web
-    name: hoc-orchestration-staging
+    name: mil-fi-staging
     runtime: node
     plan: free
     region: frankfurt

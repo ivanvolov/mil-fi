@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Clipboard, Wrench } from 'lucide-react';
+import { Box, Check, Clipboard, Wrench } from 'lucide-react';
 import type { Layer } from '@shared/schemas/layer';
 import { useUiStore } from '../../stores/uiStore';
 import { LayerSwitcher } from './LayerSwitcher';
@@ -8,6 +8,8 @@ import { LayersMenu } from './LayersMenu';
 export function TopBar({ layer }: { layer: Layer }) {
   const editOn = useUiStore((s) => s.visibility.edit);
   const toggle = useUiStore((s) => s.toggleVisibility);
+  const mapMode = useUiStore((s) => s.mapMode);
+  const setMapMode = useUiStore((s) => s.setMapMode);
   const [copied, setCopied] = useState(false);
 
   const copyView = async () => {
@@ -38,6 +40,15 @@ export function TopBar({ layer }: { layer: Layer }) {
         className={`w-7 h-7 flex items-center justify-center border ${editOn ? 'border-amber text-amber bg-amber/10' : 'border-line text-muted hover:border-amber hover:text-amber'}`}
       >
         <Wrench size={14} />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setMapMode(mapMode === '3d' ? '2d' : '3d')}
+        title={mapMode === '3d' ? '3D map ON — click for 2D (full editing tools)' : 'Switch to 3D perspective map'}
+        className={`w-7 h-7 flex items-center justify-center border ${mapMode === '3d' ? 'border-cyan text-cyan bg-cyan/10' : 'border-line text-muted hover:border-cyan hover:text-cyan'}`}
+      >
+        <Box size={14} />
       </button>
 
       <button

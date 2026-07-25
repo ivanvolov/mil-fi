@@ -48,6 +48,10 @@ interface UiStore {
   openEditor: (target: EditTarget) => void;
   closeEditor: () => void;
   // persisted
+  /** Map engine: '3d' = MapLibre GL perspective view (rotate/tilt, 3D buildings, light basemap);
+   *  '2d' = the full-featured Leaflet map (editing handles, simulator, asset planner). */
+  mapMode: '2d' | '3d';
+  setMapMode: (m: '2d' | '3d') => void;
   visibility: Visibility;
   toggleVisibility: (key: keyof Visibility) => void;
   mapViewByLayer: Record<string, MapView>;
@@ -157,6 +161,8 @@ export const useUiStore = create<UiStore>()(
       editing: null,
       openEditor: (editing) => set({ editing }),
       closeEditor: () => set({ editing: null }),
+      mapMode: '3d',
+      setMapMode: (mapMode) => set({ mapMode }),
       visibility: {
         threats: true,
         interceptors: true,
@@ -233,8 +239,9 @@ export const useUiStore = create<UiStore>()(
       setSandboxMapView: (sandboxMapView) => set({ sandboxMapView }),
     }),
     {
-      name: 'hoc-orchestration-ui',
+      name: 'mil-fi-ui',
       partialize: (s) => ({
+        mapMode: s.mapMode,
         visibility: { ...s.visibility, edit: false },
         mapViewByLayer: s.mapViewByLayer,
         lastLayerSlug: s.lastLayerSlug,
