@@ -1,6 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Map, Scale, Settings, type LucideIcon } from 'lucide-react';
+import { Map, Scale, Settings, LogOut, type LucideIcon } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore';
+import { useMe } from '../queries/useMe';
+
+async function logout() {
+  try {
+    await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+  } finally {
+    window.location.href = '/login';
+  }
+}
 
 type Tab = {
   label: string;
@@ -31,6 +40,7 @@ function RailLink({ tab, active }: { tab: Tab; active: boolean }) {
 export function AppRail() {
   const lastSlug = useUiStore((s) => s.lastLayerSlug) ?? 'vzil-1';
   const { pathname } = useLocation();
+  const role = useMe().data?.role;
   const topTabs: Tab[] = [
     {
       label: 'Sector',
@@ -64,6 +74,24 @@ export function AppRail() {
       {bottomTabs.map((t) => (
         <RailLink key={t.label} tab={t} active={t.active(pathname)} />
       ))}
+      {role && (
+        <div
+          className="text-[7px] font-mono uppercase tracking-wider text-muted text-center leading-tight"
+          title={`signed in as ${role}`}
+        >
+          {role}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => void logout()}
+        title="Log out"
+        aria-label="Log out"
+        className="w-10 h-10 flex flex-col items-center justify-center gap-0.5 border border-transparent text-muted hover:text-red hover:border-line"
+      >
+        <LogOut size={14} />
+        <span className="text-[8px] font-mono uppercase tracking-wider">Out</span>
+      </button>
     </nav>
   );
 }
