@@ -141,7 +141,7 @@ phone→web bridge simultaneously.
 | ID | Batch | Delivers | Est. | Depends on | Status |
 |----|-------|----------|------|------------|--------|
 | B1 | ~~Deploy to Vercel~~ | F8 | — | — | ❌ Cut — partner's scope |
-| B2 | **Handoff interfaces to partner** | F6, F11 | 30m | — | 🟡 Draft → `docs/05-integration-contract.md`. Needs sign-off |
+| B2 | **Handoff interfaces to partner** | F6, F11 | 30m | — | 🟡 Draft → `docs/04-integration-contract.md`. Needs sign-off |
 | **B3** | **VERTICAL SLICE: web login → QR → verify → JSON** (see sub-batches below) | F9, F10, F11 | 90m | — | ⬜ **NEXT** |
 | B4 | **Register an agent** — agent wallet linked to operator in AgentBook | F2 | 60m | — | ⬜ |
 | B5 | **Payout authorization + refusal** — `lookupHuman`, reject `null` (negative demo) | F3 | 60m | B4 | ⬜ |

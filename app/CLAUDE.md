@@ -32,7 +32,7 @@ You:
 ## 🚧 SCOPE: WORLD PART ONLY
 
 > **Set 2026-07-25 by the CEO. This overrides the multi-sponsor plan in
-> [../docs/04-submission-checklist.md](../docs/04-submission-checklist.md).**
+> [../docs/05-submission-checklist.md](../docs/05-submission-checklist.md).**
 
 **Nazarij builds the World part only. His partner builds Hedera and 0G.**
 

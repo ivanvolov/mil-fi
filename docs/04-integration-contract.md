@@ -1,4 +1,4 @@
-# 05 — Integration contract (World ↔ Hedera/0G ↔ Web platform)
+# 04 — Integration contract (World ↔ Hedera/0G ↔ Web platform)
 
 > **Audience: the partner building Hedera, 0G, and the web platform.**
 > Owner of this document: the World side (`app/`).

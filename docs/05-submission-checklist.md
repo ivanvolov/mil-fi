@@ -1,6 +1,6 @@
-# 04 — Submission checklist & bounty strategy
+# 05 — Submission checklist & bounty strategy
 
-Source material: the raw bounty texts live in `bounty/` (`hedera`, `0G`, `world`) and the event rules in `rules` at the repo root. This doc distills what we must *know and do* before submitting — requirements, disqualifiers, and the gotchas that differ between sponsors.
+Source material: the raw bounty texts live in `02-bounty/` (`hedera`, `0G`, `world`) and the event rules in `rules` at the repo root. This doc distills what we must *know and do* before submitting — requirements, disqualifiers, and the gotchas that differ between sponsors.
 
 ## Event rules that bind us (from `rules`)
 
@@ -34,7 +34,7 @@ Source material: the raw bounty texts live in `bounty/` (`hedera`, `0G`, `world`
 - **World disqualifies recycled patterns**: agent reputation, human-backed benefits like API discounts, simple content-gen use cases. Our framing must stay "human-backing as the *authorization primitive for autonomous payouts*" — new vertical, new trust model — and must be a **working end-to-end flow, not a wrapper**.
 - **World beta tracks (Selfie/Identity Check) require testing documentation** with *both* developer feedback (SDK/docs friction) and user feedback (UX, drop-off). Keep a running `docs/world-feedback.md` from day one; it is half the submission. Selfie/Identity full access opens only during the hackathon weekend — don't plan on integrating earlier.
 - **Every sponsor requires a public GitHub repo with a real README** (setup, architecture, payment flow). This repo is currently private-ish — decide what gets extracted/published before the deadline, and scrub `.env` history (a live Mongo URI is referenced in platform docs).
-- **Hedera judges look for the extra-points list** — Agent Kit usage, HCS audit trail, scheduled transactions, HCS-14 agent IDs, x402 — see [03 — Hedera integration](./03-hedera-integration.md) for which we do and in what order.
+- **Hedera judges look for the extra-points list** — Agent Kit usage, HCS audit trail, scheduled transactions, HCS-14 agent IDs, x402 — see the Hedera section of [05 — Architecture & bounty map](./03-architecture-bounty-map.md) for which we do and in what order.
 
 ## The eligibility-check skill — when to use it
 

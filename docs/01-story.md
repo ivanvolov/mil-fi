@@ -32,12 +32,12 @@ A unit that destroyed a threat tonight might re-equip from that kill **next quar
 
 Move verification and settlement to rails that operate at machine speed:
 
-- **Agentic verification** replaces the months of manual review. AI agents analyze engagement imagery — a visual-spectrum capture for threat identification and a second thermal/IR capture for kill confirmation — and produce signed verdicts. Verification compute runs on **0G** (decentralized AI compute) with **local LLM/VLM** fallbacks, so the pipeline works in degraded, bandwidth-poor field conditions and the verdicts are independently reproducible.
+- **Agentic verification** replaces the months of manual review. AI agents analyze engagement imagery — a capture at engagement for threat identification and a second capture (ideally thermal/IR) after the intercept for kill confirmation — and produce verdicts. Verification compute runs on **0G** (decentralized AI compute, TEE-capable), so the verdict is produced outside the control of the party who profits from the payout.
 - **A tamper-proof evidence chain** replaces the paper trail. Every engagement event — detection, imagery hashes, agent verdicts, attribution — is published to an immutable, timestamped public log.
 - **Instant token settlement** replaces the months of payment lag. Confirmed kills mint/transfer points as tokens on **Hedera** to the unit's account in seconds, with sub-cent fees. The marketplace redemption becomes a token operation.
-- **Human accountability stays in the loop.** Operators are verified humans via **World ID** — a unique-human proof bound to each operator account — so autonomous settlement never detaches from a real, accountable person behind each unit.
+- **Human accountability stays in the loop.** Every actor is a verified human via **World ID** at a tier matched to their role — Orb for program administrators, Selfie Check for civilian spotters, Identity Check (document) for military units — so autonomous settlement never detaches from a real, accountable person behind each unit.
 
-The hackathon scope deliberately narrows this to a working vertical slice — see [02 — Architecture](./02-architecture.md).
+The hackathon scope deliberately narrows this to a working vertical slice — see [03 — Architecture & bounty map](./03-architecture-bounty-map.md).
 
 ## Why this matters beyond Ukraine
 

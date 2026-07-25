@@ -31,4 +31,4 @@ The World identity layer of MilFi: it binds a **real, unique human operator** to
 
 ## Bounty note
 
-Feeds **AgentKit New Use Cases** and **Selfie Check Beta** (see [docs/04-submission-checklist.md](../docs/04-submission-checklist.md)). Selfie Check full access opens only during the hackathon weekend. From the first integration attempt, log developer + user feedback into `docs/world-feedback.md` — the testing documentation is half the beta submission.
+Feeds **AgentKit New Use Cases** and **Selfie Check Beta** (see [docs/05-submission-checklist.md](../docs/05-submission-checklist.md)). Selfie Check full access opens only during the hackathon weekend. From the first integration attempt, log developer + user feedback into `docs/world-feedback.md` — the testing documentation is half the beta submission.
