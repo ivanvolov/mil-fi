@@ -1,0 +1,62 @@
+About
+0G is the blockchain for AI agents. Verifiable compute, sealed inference, and decentralized storage in one modular stack - so developers can build autonomous AI agents whose every action (inference, memory, execution) is cryptographically verified and settled onchain instead of blindly trusted.
+
+Prizes
+🧠 Best AI Product on 0G ⸺ $6,000
+🥇
+1st place
+$3,000
+🥈
+2nd place
+$2,000
+🥉
+3rd place
+$1,000
+The product layer. Build the best end-user applications and agents on 0G: things people, or other agents, actually use. Because you build on 0G Compute / Private Computer, your inference is private and verifiable by default (TEE-sealed), so you can focus on shipping a real product. Combine with 0G Storage for persistent encrypted memory, Agentic IDs for ownership and composability, and 0G Chain for on-chain actions and micropayments.
+
+This track is for what you ship, not what others build on. If you are building a framework, SDK, or developer tooling, submit to the Infrastructure track instead.
+
+Ideas to get you started: 🔹 Private personal "Digital Twin" or coding agent on 0G Compute with evolving encrypted memory on 0G Storage 🔹 Verifiable research or analysis agent that self-fact-checks, with TEE-attested proof of every result, and optional on-chain provenance 🔹 Agentic browser companion or extension with tradeable memory via Agentic ID 🔹 Consumer on-chain AI app, DeFi experience, RWA tool, or AI x gaming dApp with persistent-memory agents and automatic royalty splits 🔹 Agent minted as an Agentic ID with embedded intelligence (encrypted on 0G Storage), persistent memory, and dynamic upgrades
+
+Qualification Requirements
+Submission requirements:
+
+🔹 Project name and a short description 🔹 Contract deployment addresses 🔹 Public GitHub repo (README + setup instructions) 🔹 Demo video & live demo link (keep the video under 3 mins!) 🔹 Explain which 0G features or SDKs you used 🔹 Team member names and contact info (Telegram & X) You must also include: 🔹 A working, demoable product: a live link or a runnable build, not just a repo 🔹 Proof you use 0G Compute / Private Computer for inference (this is what makes your product private and verifiable) 🔹 For Agentic ID projects: link to the minted Agentic ID on the 0G explorer
+
+🛠️ Best Infrastructure & Tooling on 0G ⸺ $4,500
+Up to 3 teams will receive $1,500
+The builder layer. Build the frameworks, SDKs, primitives, and developer tooling that other teams will build their 0G applications and agents on top of. This track celebrates the work that makes the whole ecosystem faster, safer, and more capable.
+
+If you are shipping an end-user product, submit to the Application track instead.
+
+Ideas to get you started: 🔹 Agent framework or SDK natively integrated with 0G Compute sealed inference and 0G Storage memory 🔹 Model-routing or provenance layer across 0G's hosted models, with verification tracked on-chain 🔹 Agentic ID composability library: breeding, merging, or fine-tuning agents together 🔹 No-code or low-code visual agent builder with one-click deploy to 0G Compute and Storage 🔹 Verification, guardrail, or auditor layer for on-chain agent actions 🔹 Memory-layer abstraction over 0G Storage
+
+Qualification Requirements
+Submission requirements: 🔹 Project name and a short description 🔹 Contract deployment addresses 🔹 Public GitHub repo (README + setup instructions) 🔹 Demo video & live demo link (keep the video under 3 mins!) 🔹 Explain which 0G features or SDKs you used 🔹 Team member names and contact info (Telegram & X)
+
+You must also include: 🔹 At least one working example agent or app built using your framework or tooling (include the example code or link in the README) 🔹 An architecture diagram (optional but strongly recommended) showing how your tooling integrates with the 0G stack (Compute, Storage, Chain, Agentic ID)
+
+🚀 Keep Building on 0G ⸺ $4,500
+🆕  This prize is only available to Continuity Track participants →
+Up to 3 teams will receive $1,500
+For teams iterating on an existing 0G project started at ETHGlobal Cannes, the online agent hackathon, Zero Cup, or independent prior work. We are not judging polish on old demos. We are judging meaningful progress during the Lisbon hackathon window: new features, production hardening, user readiness, and trajectory toward real usage.
+
+Ideas to get you started:
+
+🔹 Evolve a Cannes or online-hackathon prototype into a deployed product with persistent 0G Storage memory and on-chain settlement on 0G Chain 🔹 Harden an existing project with verifiable inference on 0G Compute, error recovery, and robust state management 🔹 Integrate a missing stack layer: move inference to 0G Compute, memory to 0G Storage, or identity to an Agentic ID,
+
+Qualification Requirements
+Submission requirements: 🔹 Project name and a short description 🔹 Contract deployment addresses 🔹 Public GitHub repo (README + setup instructions) 🔹 Demo video & live demo link (keep the video under 3 mins!) 🔹 Explain which 0G features or SDKs you used 🔹 Team member names and contact info (Telegram & X)
+
+Additional requirements for Continuity (on top of standard rules): 🔹 Link to prior state: a dated commit hash or the previous ETHGlobal submission page marking where you started 🔹 Dated changelog of work done during the Lisbon hackathon window 🔹 Short "What's next" statement to show trajectory
+
+Resources
+Builder Hub
+https://build.0g.ai
+↗
+Docs
+https://docs.0g.ai
+↗
+Private Computer
+https://pc.0g.ai
+↗
