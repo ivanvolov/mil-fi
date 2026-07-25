@@ -6,6 +6,7 @@ import { App } from './App';
 import { TypesManagementPage } from './routes/TypesManagementPage';
 import { SandboxPage } from './routes/SandboxPage';
 import { ReleasesPage } from './routes/ReleasesPage';
+import { SettlementPage } from './routes/SettlementPage';
 import { LoginPage } from './pages/Login';
 import { RequireAuth } from './pages/RequireAuth';
 import { useLayers } from './queries/useLayers';
@@ -51,6 +52,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/sandbox" element={<RequireAuth><SandboxPage /></RequireAuth>} />
           <Route path="/types" element={<RequireAuth><TypesManagementPage /></RequireAuth>} />
           <Route path="/releases" element={<RequireAuth><ReleasesPage /></RequireAuth>} />
+          <Route path="/settlement" element={<RequireAuth><SettlementPage /></RequireAuth>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

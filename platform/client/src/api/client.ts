@@ -8,6 +8,15 @@ import type { Drawing, DrawingCreate } from '@shared/schemas/drawing';
 import type { InterceptorType, InterceptorTypePatch } from '@shared/schemas/interceptor-type';
 import type { ThreatType, ThreatTypeCreate, ThreatTypePatch } from '@shared/schemas/threat-type';
 import type { LatLng } from '@shared/schemas/common';
+import type {
+  Engagement,
+  LedgerResponse,
+  OnboardBody,
+  RunEngagementBody,
+  SettlementStatus,
+  Unit,
+  UnitBalance,
+} from '../types/settlement';
 
 export type AffectedReport = { instanceCount: number; layerBreakdown: Array<{ layerId: string; layerName: string; count: number }> };
 
@@ -195,5 +204,32 @@ export const api = {
         confidence: number;
       }>;
     }>('GET', `/external/detections?${params.toString()}`);
+  },
+
+  // --- settlement console (Hedera + 0G engagement pipeline) ---
+  getSettlementStatus: () => http<SettlementStatus>('GET', '/settlement/status'),
+
+  onboardUnit: (body: OnboardBody) => http<Unit>('POST', '/settlement/onboard', { body }),
+
+  getUnits: () => http<Unit[]>('GET', '/settlement/units'),
+
+  getUnitBalance: (id: string) =>
+    http<UnitBalance>('GET', `/settlement/units/${encodeURIComponent(id)}/balance`),
+
+  // 2 live 0G inference calls + Hedera writes — expect ~20-30s.
+  runEngagement: (body: RunEngagementBody) =>
+    http<Engagement>('POST', '/settlement/engagements', { body }),
+
+  getEngagements: () => http<Engagement[]>('GET', '/settlement/engagements'),
+
+  getEngagement: (id: string) =>
+    http<Engagement>('GET', `/settlement/engagements/${encodeURIComponent(id)}`),
+
+  getLedger: (opts: { engagementId?: string; limit?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.engagementId) params.set('engagementId', opts.engagementId);
+    if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+    const qs = params.toString();
+    return http<LedgerResponse>('GET', `/settlement/ledger${qs ? `?${qs}` : ''}`);
   },
 };

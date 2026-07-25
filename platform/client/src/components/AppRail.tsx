@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Map, Settings, type LucideIcon } from 'lucide-react';
+import { Map, Scale, Settings, type LucideIcon } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore';
 
 type Tab = {
@@ -37,6 +37,12 @@ export function AppRail() {
       to: `/layers/${lastSlug}`,
       icon: Map,
       active: (p) => p.startsWith('/layers/'),
+    },
+    {
+      label: 'Settle',
+      to: '/settlement',
+      icon: Scale,
+      active: (p) => p === '/settlement',
     },
   ];
   // Sandbox + Releases are hidden for the bounty demo (routes still work by URL).
