@@ -25,8 +25,18 @@ export interface InviteRow extends Document {
   _id: string;
   label: string;
   role?: Role;
+  /** Optional username/password login (demo role accounts). When set, the user
+   * signs in with these instead of a numeric invite code. */
+  username?: string;
+  passwordHash?: string;
   createdAt: Date;
   revoked?: boolean;
+}
+
+/** Demo-grade password hashing — unsalted sha256. Fine for shared demo accounts;
+ * not for real user passwords. */
+export function hashPassword(pw: string): string {
+  return crypto.createHash('sha256').update(pw).digest('hex');
 }
 
 export interface AuthCollections {

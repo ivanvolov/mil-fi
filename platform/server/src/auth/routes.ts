@@ -7,11 +7,18 @@ import {
   createSession,
   destroySession,
   normalizeCode,
+  hashPassword,
   lookupSession,
   type AuthCollections,
 } from './session.js';
 
-const loginBody = z.object({ code: z.string().min(1).max(64) });
+// Login accepts EITHER a numeric invite code, OR a username + password
+// (the demo role accounts seeded by `npm run seed:users`).
+const loginBody = z.object({
+  code: z.string().min(1).max(64).optional(),
+  username: z.string().min(1).max(64).optional(),
+  password: z.string().min(1).max(128).optional(),
+});
 
 export async function registerAuthRoutes(app: FastifyInstance, c: AuthCollections) {
   // Login is the only route we rate-limit. Using fastify-rate-limit's per-route config.
@@ -23,13 +30,23 @@ export async function registerAuthRoutes(app: FastifyInstance, c: AuthCollection
       },
     },
     async (req, reply) => {
-      const { code } = loginBody.parse(req.body);
-      const normalized = normalizeCode(code);
-      if (!normalized) throw new HttpError(401, 'INVALID_CODE', 'invalid code');
+      const { code, username, password } = loginBody.parse(req.body);
 
-      const invite = await c.invites.findOne({ _id: normalized });
-      if (!invite || invite.revoked) {
-        throw new HttpError(401, 'INVALID_CODE', 'invalid code');
+      let invite = null;
+      if (username && password) {
+        // Username/password path (demo role accounts).
+        const found = await c.invites.findOne({ username });
+        if (found && !found.revoked && found.passwordHash === hashPassword(password)) {
+          invite = found;
+        }
+        if (!invite) throw new HttpError(401, 'INVALID_LOGIN', 'invalid username or password');
+      } else {
+        // Numeric invite-code path (back-compat).
+        const normalized = normalizeCode(code);
+        if (!normalized) throw new HttpError(401, 'INVALID_CODE', 'invalid code');
+        const found = await c.invites.findOne({ _id: normalized });
+        if (!found || found.revoked) throw new HttpError(401, 'INVALID_CODE', 'invalid code');
+        invite = found;
       }
 
       const session = await createSession(c, invite);
