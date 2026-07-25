@@ -10,6 +10,28 @@ export interface BaseDoc {
   version: number;
 }
 
+/** A unit that can file reports / receive payouts. String _id (unit code). */
+export interface UnitDoc {
+  _id: string;
+  hederaAccountId: string | null;
+  hederaPrivateKey: string | null;
+  hederaPublicKey: string | null;
+  humanBackingLevel: 'government' | 'spotter' | 'military';
+  humanBacked: boolean;
+  worldProof: unknown;
+  kyc: { associateTx: string; kycTx: string } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** One engagement's full trail. Loose beyond the keys we query on. */
+export interface EngagementDoc {
+  _id: string;
+  unitId: string;
+  createdAt: Date;
+  [k: string]: unknown;
+}
+
 export interface Collections {
   interceptorTypes: Collection<Document>;
   threatTypes: Collection<Document>;
@@ -21,6 +43,9 @@ export interface Collections {
   drawings: Collection<Document>;
   invites: Collection<InviteRow>;
   sessions: Collection<SessionRow>;
+  // MilFi settlement layer
+  units: Collection<UnitDoc>;
+  engagements: Collection<EngagementDoc>;
 }
 
 let _client: MongoClient | null = null;
@@ -47,6 +72,8 @@ export async function connectDb(): Promise<{ client: MongoClient; db: Db; collec
     drawings: _db.collection('drawings'),
     invites: _db.collection<InviteRow>('invites'),
     sessions: _db.collection<SessionRow>('sessions'),
+    units: _db.collection<UnitDoc>('units'),
+    engagements: _db.collection<EngagementDoc>('engagements'),
   };
 
   await ensureIndexes(_collections);
@@ -90,6 +117,11 @@ async function ensureIndexes(c: Collections) {
     // auth: TTL index — MongoDB auto-removes session rows past expiresAt
     c.sessions.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
     c.sessions.createIndex({ code: 1 }),
+
+    // settlement layer
+    c.units.createIndex({ hederaAccountId: 1 }),
+    c.engagements.createIndex({ unitId: 1 }),
+    c.engagements.createIndex({ createdAt: -1 }),
   ]);
 }
 

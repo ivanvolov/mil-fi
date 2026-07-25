@@ -17,6 +17,8 @@ import { registerThreadRoutes } from './routes/threads.js';
 import { registerDrawingRoutes } from './routes/drawings.js';
 import { registerExternalRoutes } from './routes/external.js';
 import { registerAiRoutes } from './routes/ai.js';
+import { registerEngagementRoutes } from './routes/engagements.js';
+import { closeHedera } from './hedera/client.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerHookRoutes } from './routes/hooks.js';
 import { makeRequireSession } from './auth/middleware.js';
@@ -103,6 +105,7 @@ async function main() {
     await registerDrawingRoutes(api, collections);
     await registerExternalRoutes(api);
     await registerAiRoutes(api, collections);
+    await registerEngagementRoutes(api, collections);
   }, { prefix: '/api/v1' });
 
   app.setErrorHandler((err, _req, reply) => {
@@ -137,6 +140,7 @@ async function main() {
     app.log.info({ signal }, 'shutting down');
     try {
       await app.close();
+      closeHedera();
       await closeDb();
     } finally {
       process.exit(0);

@@ -15,9 +15,22 @@ import {
 import { useOrchestrationFocus } from '../../lib/orchestrationFocus';
 import { glyphHtml, threatGlyphHtml } from './glyphs';
 
-/** Dark vector basemap — CARTO Dark Matter GL style (OpenMapTiles schema, no API key).
- *  Matches the app's dark UI; swap for positron-gl-style for a light/day look. */
-const STYLE_URL = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+/** CARTO GL basemaps (OpenMapTiles schema, no API key).
+ *  day = Voyager (full-color), night = Dark Matter (matches the app's dark UI). */
+const BASEMAP = {
+  day: {
+    styleUrl: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+    background: '#e8e4de',
+    buildings: '#d9d0c9',
+    hillshade: { exaggeration: 0.3, shadow: '#473b24', highlight: '#ffffff', accent: '#8a7a5a' },
+  },
+  night: {
+    styleUrl: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    background: '#0a0d12',
+    buildings: '#39414d',
+    hillshade: { exaggeration: 0.45, shadow: '#000000', highlight: '#5a6a7a', accent: '#1a2028' },
+  },
+} as const;
 
 /** MapLibre GL zoom levels sit one below Leaflet's for the same visual scale (512px tiles).
  *  All persisted views + layer.mapZoom are Leaflet-scale, so convert at the boundary. */
@@ -113,6 +126,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [styleReady, setStyleReady] = useState(false);
 
+  const styleMode = useUiStore((s) => s.mapStyleMode);
   const visibility = useUiStore((s) => s.visibility);
   const selection = useUiStore((s) => s.selection);
   const selections = useUiStore((s) => s.selections);
@@ -148,17 +162,18 @@ export function Map3DHost({ data }: { data: LayerFull }) {
 
   const layerId = data.layer._id;
 
-  // ---------- map lifecycle (one map per sector) ----------
+  // ---------- map lifecycle (one map per sector + palette; palette change remounts) ----------
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const palette = BASEMAP[styleMode];
     const persisted = useUiStore.getState().mapViewByLayer[layerId];
     const center = persisted?.center ?? data.layer.mapCenter;
     const zoom = toGl(persisted?.zoom ?? data.layer.mapZoom);
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: palette.styleUrl,
       center: [center.lng, center.lat],
       zoom,
       pitch: 55,
@@ -170,11 +185,44 @@ export function Map3DHost({ data }: { data: LayerFull }) {
     map.touchZoomRotate.enableRotation();
 
     map.on('load', () => {
-      // 3D building extrusions from the basemap's own vector tiles (OpenMapTiles
-      // `building` layer). Inserted under the first symbol layer so labels stay on top.
       const style = map.getStyle();
       const vectorSource = Object.entries(style.sources).find(([, s]) => (s as any).type === 'vector')?.[0];
       const firstSymbol = style.layers.find((l: { type: string }) => l.type === 'symbol')?.id;
+
+      // Real 3D terrain from the open Mapzen/Terrarium elevation tileset (AWS Open Data,
+      // no key). Two separate DEM sources: MapLibre can't share one between setTerrain
+      // and a hillshade layer. Exaggeration >1 because Lisbon's hills are ~100-200 m.
+      const DEM_TILES = ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'];
+      if (!map.getSource('hoc-terrain-dem')) {
+        map.addSource('hoc-terrain-dem', {
+          type: 'raster-dem', tiles: DEM_TILES, encoding: 'terrarium',
+          tileSize: 256, maxzoom: 14,
+          attribution: 'Terrain © Mapzen/USGS/SRTM',
+        });
+        map.addSource('hoc-hillshade-dem', {
+          type: 'raster-dem', tiles: DEM_TILES, encoding: 'terrarium',
+          tileSize: 256, maxzoom: 14,
+        });
+        map.setTerrain({ source: 'hoc-terrain-dem', exaggeration: 1.5 });
+        // hillshade makes the relief readable even at city-wide zoom / low pitch
+        map.addLayer(
+          {
+            id: 'hoc-hillshade',
+            type: 'hillshade',
+            source: 'hoc-hillshade-dem',
+            paint: {
+              'hillshade-exaggeration': palette.hillshade.exaggeration,
+              'hillshade-shadow-color': palette.hillshade.shadow,
+              'hillshade-highlight-color': palette.hillshade.highlight,
+              'hillshade-accent-color': palette.hillshade.accent,
+            },
+          },
+          firstSymbol,
+        );
+      }
+
+      // 3D building extrusions from the basemap's own vector tiles (OpenMapTiles
+      // `building` layer). Inserted under the first symbol layer so labels stay on top.
       if (vectorSource && !map.getLayer('hoc-3d-buildings')) {
         map.addLayer(
           {
@@ -184,7 +232,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
             'source-layer': 'building',
             minzoom: 13,
             paint: {
-              'fill-extrusion-color': '#39414d',
+              'fill-extrusion-color': palette.buildings,
               'fill-extrusion-height': [
                 'coalesce',
                 ['to-number', ['get', 'render_height']],
@@ -198,6 +246,12 @@ export function Map3DHost({ data }: { data: LayerFull }) {
           firstSymbol,
         );
       }
+      // mountain button: toggles the terrain mesh on/off (hillshade stays either way)
+      map.addControl(
+        new maplibregl.TerrainControl({ source: 'hoc-terrain-dem', exaggeration: 1.5 }),
+        'bottom-right',
+      );
+
       setStyleReady(true);
     });
 
@@ -231,7 +285,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
       map.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layerId]);
+  }, [layerId, styleMode]);
 
   // ---------- markers (interceptors + teams + threats) ----------
   useEffect(() => {
@@ -607,16 +661,26 @@ export function Map3DHost({ data }: { data: LayerFull }) {
     else for (const s of selections) collect(s);
     if (pts.length === 0) return;
 
+    // Weapons/crews zoom in tight (~200 m scale); threats/drawings frame their geometry wide.
+    const kind = selection?.kind;
+    const maxZoom = toGl(kind === 'interceptor' || kind === 'team' ? 18 : 12.5);
+
     if (pts.length === 1) {
-      map.flyTo({ center: pts[0]!, zoom: toGl(12.5), duration: 600 });
+      map.flyTo({ center: pts[0]!, zoom: maxZoom, duration: 900 });
       return;
     }
     const bounds = pts.reduce(
       (b, p) => b.extend(p as [number, number]),
       new maplibregl.LngLatBounds(pts[0]!, pts[0]!),
     );
-    map.fitBounds(bounds, { padding: 80, maxZoom: toGl(12.5), duration: 600 });
+    map.fitBounds(bounds, { padding: 80, maxZoom, duration: 900 });
   }, [selection, selections, selectionZoom, data]);
 
-  return <div ref={containerRef} className="h-full w-full hoc-map3d" />;
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full hoc-map3d"
+      style={{ background: BASEMAP[styleMode].background }}
+    />
+  );
 }

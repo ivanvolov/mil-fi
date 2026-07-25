@@ -198,7 +198,7 @@ function ViewController({ data }: { data: LayerFull }) {
       );
       const pts: [number, number][] = [[inter.position.lat, inter.position.lng]];
       for (const tm of data.teams) if (crewIds.has(tm._id)) pts.push([tm.position.lat, tm.position.lng]);
-      flyToPoints(pts, 12.5);
+      flyToPoints(pts, 18); // tight (~200 m scale) on the weapon
       return;
     }
 
@@ -210,7 +210,7 @@ function ViewController({ data }: { data: LayerFull }) {
       );
       const pts: [number, number][] = [[team.position.lat, team.position.lng]];
       for (const inter of data.interceptors) if (interIds.has(inter._id)) pts.push([inter.position.lat, inter.position.lng]);
-      flyToPoints(pts, 12.5);
+      flyToPoints(pts, 18); // tight (~200 m scale) on the crew + its weapons
       return;
     }
 
@@ -242,6 +242,7 @@ function ViewController({ data }: { data: LayerFull }) {
 
 export function MapHost({ data }: { data: LayerFull }) {
   const visibility = useUiStore((s) => s.visibility);
+  const styleMode = useUiStore((s) => s.mapStyleMode);
   const simulating = useUiStore((s) => s.simStage !== 'idle');
   const planning = useUiStore((s) => s.assetStage !== 'idle');
   // Either overlay (threat sim or asset planner) takes over the map and hides the live layers.
@@ -276,7 +277,13 @@ export function MapHost({ data }: { data: LayerFull }) {
       attributionControl={false}
       className="h-full w-full"
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" maxZoom={19} />
+      <TileLayer
+        key={styleMode}
+        url={styleMode === 'day'
+          ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'}
+        maxZoom={19}
+      />
       <BrickHatchPattern />
       <ZoomLevelClass />
       <ResizeInvalidator />

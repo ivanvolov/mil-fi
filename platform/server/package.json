@@ -12,13 +12,19 @@
     "migrate:fields": "tsx src/scripts/migrateFields.ts",
     "seed:invites": "tsx src/scripts/seedInvites.ts",
     "backup:layers": "tsx src/scripts/backupAllLayers.ts",
-    "refresh-db": "tsx src/scripts/refreshStagingDb.ts"
+    "refresh-db": "tsx src/scripts/refreshStagingDb.ts",
+    "hedera:setup": "tsx src/scripts/hederaSetup.ts",
+    "hedera:smoke": "tsx src/scripts/hederaSmoke.ts",
+    "verify:smoke": "tsx src/scripts/verifySmoke.ts",
+    "token:smoke": "tsx src/scripts/tokenSmoke.ts",
+    "engagement:smoke": "tsx src/scripts/engagementSmoke.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^10.0.1",
     "@fastify/rate-limit": "^10.2.1",
     "@fastify/static": "^8.0.3",
+    "@hashgraph/sdk": "^2.81.0",
     "dotenv": "^16.4.7",
     "fastify": "^5.1.0",
     "mongodb": "^6.12.0",

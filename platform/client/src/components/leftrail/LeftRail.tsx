@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, Zap, Crosshair, Boxes, EyeOff, ZoomIn, Radar } from 'lucide-react';
+import { Plus, Camera, ScanEye, Crosshair, CheckCheck, Coins, ScrollText, EyeOff, ZoomIn } from 'lucide-react';
 import type { LayerFull } from '@shared/schemas/layer-full';
 import type { LatLng } from '@shared/schemas/common';
 import type { TeamCreate } from '@shared/schemas/team';
@@ -12,6 +12,35 @@ import { drawingKindShortLabel, drawingKindFullLabel, drawingGeometryDesc } from
 import { LauncherCreateDialog } from '../dialogs/LauncherCreateDialog';
 import { ThreatSimulatorDialog } from '../dialogs/ThreatSimulatorDialog';
 import { AssetManagerDialog } from '../dialogs/AssetManagerDialog';
+
+/** The 6 steps of one engagement, per docs/05-architecture-bounty-map.md ("Поток одного
+ *  сбития"). Each button is the UI entry point for its step; backends land incrementally. */
+const FLOW_STEPS = [
+  {
+    key: 'report', label: 'Report Threat', icon: Camera, partner: 'WORLD', color: '#06b6d4',
+    desc: 'Spotter (level 2, Selfie-verified) submits photo + coordinates + time. Entry point of the whole funnel.',
+  },
+  {
+    key: 'agent-a', label: 'Verify · Agent A', icon: ScanEye, partner: '0G', color: '#a78bfa',
+    desc: 'Vision agent on 0G Compute: threat or not, class (Shahed / UAV / aircraft), confidence 0..1. TEE-sealed inference.',
+  },
+  {
+    key: 'engage', label: 'Record Engagement', icon: Crosshair, partner: 'HCS', color: '#f59e0b',
+    desc: 'Unit (level 3, document-verified) engages the target. Platform records who / with what / when / which threat.',
+  },
+  {
+    key: 'agent-b', label: 'Confirm Kill · Agent B', icon: CheckCheck, partner: '0G', color: '#a78bfa',
+    desc: 'Second 0G agent on the post-strike photo: target gone / debris / detonation signature, consistent with Agent A.',
+  },
+  {
+    key: 'settle', label: 'Settle & Pay', icon: Coins, partner: 'HEDERA', color: '#f59e0b',
+    desc: 'Settle-agent reads the HCS journal, applies the government rule (≥95% + kill confirmed), checks World human-backing, pays DEFPOINT via HTS.',
+  },
+  {
+    key: 'ledger', label: 'Evidence Ledger', icon: ScrollText, partner: 'HEDERA', color: '#f59e0b',
+    desc: 'Full audit trail on Hedera HCS: photo hashes, both verdicts, payout receipt — consensus-timestamped, auditable on HashScan.',
+  },
+] as const;
 
 function Accordion({
   label,
@@ -153,11 +182,7 @@ export function LeftRail({ data }: { data: LayerFull }) {
   const createTeam = useCreateTeam(slug);
   const createDrawing = useCreateDrawing(slug);
   const [launcherCreateOpen, setLauncherCreateOpen] = useState(false);
-  const setSimStage = useUiStore((s) => s.setSimStage);
-  const setSimSource = useUiStore((s) => s.setSimSource);
-  const setAssetStage = useUiStore((s) => s.setAssetStage);
-  const setBulkOrchestrate = useUiStore((s) => s.setBulkOrchestrate);
-  const manageAssetsEnabled = useUiStore((s) => s.featureFlags.manageAssets);
+  const [activeFlowStep, setActiveFlowStep] = useState<string | null>(null);
 
   // Shift and ⌘/Ctrl are orthogonal modifiers: Shift = additive selection, ⌘/Ctrl = zoom.
   //   Plain click            → single-select (or deselect if the sole selected row).
@@ -396,37 +421,44 @@ export function LeftRail({ data }: { data: LayerFull }) {
       {/* spacer: clicking the empty area below the lists clears the selection */}
       <div className="flex-1 min-h-[40px]" onClick={() => setSelection(null)} aria-label="clear selection" />
 
+      {/* Engagement flow — one button per step of docs/05-architecture-bounty-map.md.
+          Legacy tools (threat simulator, asset manager, orchestrate) are hidden, not removed —
+          their dialogs stay mounted below and can be re-wired if needed. */}
+      {activeFlowStep && (() => {
+        const step = FLOW_STEPS.find((s) => s.key === activeFlowStep);
+        if (!step) return null;
+        return (
+          <div className="mx-2 mb-1 border border-line bg-panel px-2.5 py-2 font-mono text-[10px] leading-relaxed">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-ink uppercase tracking-wider font-semibold">{step.label}</span>
+              <button type="button" onClick={() => setActiveFlowStep(null)} className="text-muted hover:text-ink" aria-label="close">✕</button>
+            </div>
+            <div className="text-muted">{step.desc}</div>
+            <div className="mt-1.5 text-[9px] uppercase tracking-wider" style={{ color: step.color }}>
+              {step.partner} · wiring in progress
+            </div>
+          </div>
+        );
+      })()}
       <div className="px-2 py-2 border-t border-line space-y-1.5">
-        <button
-          type="button"
-          onClick={() => { setSimSource('random'); setSimStage('setup'); }}
-          className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-cyan text-muted hover:text-cyan font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-        >
-          <Zap size={12} /> Simulate Threats
-        </button>
-        <button
-          type="button"
-          onClick={() => { setSimSource('api'); setSimStage('setup'); }}
-          className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-cyan text-muted hover:text-cyan font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-        >
-          <Radar size={12} /> Simulate (Real Detections)
-        </button>
-        {manageAssetsEnabled && (
-          <button
-            type="button"
-            onClick={() => setAssetStage('setup')}
-            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-cyan text-muted hover:text-cyan font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-          >
-            <Boxes size={12} /> Manage Assets
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setBulkOrchestrate(true)}
-          className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-cyan text-muted hover:text-cyan font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-        >
-          <Crosshair size={12} /> Orchestrate
-        </button>
+        {FLOW_STEPS.map((step) => {
+          const Icon = step.icon;
+          const active = activeFlowStep === step.key;
+          return (
+            <button
+              key={step.key}
+              type="button"
+              onClick={() => setActiveFlowStep(active ? null : step.key)}
+              className={`w-full flex items-center gap-1.5 border font-mono text-[10px] uppercase tracking-wider px-2 py-1.5 ${
+                active ? 'border-cyan text-cyan bg-cyan/5' : 'border-line hover:border-cyan text-muted hover:text-cyan'
+              }`}
+            >
+              <Icon size={12} className="shrink-0" />
+              <span className="flex-1 text-left">{step.label}</span>
+              <span className="text-[8px] tracking-wider" style={{ color: step.color }}>{step.partner}</span>
+            </button>
+          );
+        })}
       </div>
 
       <LauncherCreateDialog

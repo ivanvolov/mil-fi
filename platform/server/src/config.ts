@@ -51,4 +51,30 @@ export const config = {
   renderWebhookSecret: optional('RENDER_WEBHOOK_SECRET'),
   telegramBotToken: optional('TELEGRAM_BOT_TOKEN'),
   telegramChatId: optional('TELEGRAM_CHAT_ID'),
+
+  // 0G Compute router (OpenAI-compatible). Hosts the vision agents (A + B).
+  // Key reused from the verification/ harness; falls back to root OG_API_KEY.
+  zerog: {
+    baseUrl: (process.env.ZG_ROUTER_BASE_URL ?? 'https://router-api-testnet.integratenetwork.work/v1').replace(/\/$/, ''),
+    apiKey: process.env.ZG_ROUTER_API_KEY ?? process.env.OG_API_KEY ?? '',
+    model: process.env.ZG_MODEL ?? 'qwen2.5-omni',
+  },
+
+  // Hedera testnet. Operator id/key come from portal.hedera.com; the token and
+  // topic ids are minted once by `npm run hedera:setup` and pasted back here.
+  // All optional: when unset the Hedera layer is disabled and the pipeline still
+  // runs (verdicts just don't get journaled/paid). See src/hedera/.
+  hedera: {
+    network: process.env.HEDERA_NETWORK ?? 'testnet',
+    operatorId: optional('HEDERA_OPERATOR_ID'),
+    operatorKey: optional('HEDERA_OPERATOR_KEY'),
+    // Key type of HEDERA_OPERATOR_KEY: ECDSA (default for new portal accounts) or ED25519.
+    keyType: (process.env.HEDERA_KEY_TYPE ?? 'ECDSA').toUpperCase(),
+    defpointTokenId: optional('HEDERA_DEFPOINT_TOKEN_ID'),
+    evidenceTopicId: optional('HEDERA_EVIDENCE_TOPIC_ID'),
+  },
 };
+
+/** True only when operator creds are present — guards every live Hedera call so
+ * the platform degrades gracefully with no account configured. */
+export const hederaEnabled = Boolean(config.hedera.operatorId && config.hedera.operatorKey);

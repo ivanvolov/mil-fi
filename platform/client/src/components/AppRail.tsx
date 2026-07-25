@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Map, FlaskConical, Settings, GitBranch, type LucideIcon } from 'lucide-react';
+import { Map, Settings, type LucideIcon } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore';
 
 type Tab = {
@@ -39,19 +39,8 @@ export function AppRail() {
       active: (p) => p.startsWith('/layers/'),
     },
   ];
+  // Sandbox + Releases are hidden for the bounty demo (routes still work by URL).
   const bottomTabs: Tab[] = [
-    {
-      label: 'Sandbox',
-      to: '/sandbox',
-      icon: FlaskConical,
-      active: (p) => p === '/sandbox',
-    },
-    {
-      label: 'Releases',
-      to: '/releases',
-      icon: GitBranch,
-      active: (p) => p === '/releases',
-    },
     {
       label: 'Settings',
       to: '/types',

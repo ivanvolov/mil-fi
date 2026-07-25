@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Check, Clipboard, Wrench } from 'lucide-react';
+import { Box, Check, Clipboard, Moon, Sun, Wrench } from 'lucide-react';
 import type { Layer } from '@shared/schemas/layer';
 import { useUiStore } from '../../stores/uiStore';
 import { LayerSwitcher } from './LayerSwitcher';
@@ -10,6 +10,8 @@ export function TopBar({ layer }: { layer: Layer }) {
   const toggle = useUiStore((s) => s.toggleVisibility);
   const mapMode = useUiStore((s) => s.mapMode);
   const setMapMode = useUiStore((s) => s.setMapMode);
+  const styleMode = useUiStore((s) => s.mapStyleMode);
+  const setStyleMode = useUiStore((s) => s.setMapStyleMode);
   const [copied, setCopied] = useState(false);
 
   const copyView = async () => {
@@ -49,6 +51,15 @@ export function TopBar({ layer }: { layer: Layer }) {
         className={`w-7 h-7 flex items-center justify-center border ${mapMode === '3d' ? 'border-cyan text-cyan bg-cyan/10' : 'border-line text-muted hover:border-cyan hover:text-cyan'}`}
       >
         <Box size={14} />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setStyleMode(styleMode === 'day' ? 'night' : 'day')}
+        title={styleMode === 'day' ? 'Day basemap — click for night' : 'Night basemap — click for day'}
+        className={`w-7 h-7 flex items-center justify-center border ${styleMode === 'day' ? 'border-amber text-amber bg-amber/10' : 'border-line text-muted hover:border-amber hover:text-amber'}`}
+      >
+        {styleMode === 'day' ? <Sun size={14} /> : <Moon size={14} />}
       </button>
 
       <button

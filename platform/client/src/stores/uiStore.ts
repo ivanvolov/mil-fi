@@ -52,6 +52,9 @@ interface UiStore {
    *  '2d' = the full-featured Leaflet map (editing handles, simulator, asset planner). */
   mapMode: '2d' | '3d';
   setMapMode: (m: '2d' | '3d') => void;
+  /** Basemap palette: 'day' = colored CARTO Voyager, 'night' = CARTO Dark Matter. */
+  mapStyleMode: 'day' | 'night';
+  setMapStyleMode: (m: 'day' | 'night') => void;
   visibility: Visibility;
   toggleVisibility: (key: keyof Visibility) => void;
   mapViewByLayer: Record<string, MapView>;
@@ -163,6 +166,8 @@ export const useUiStore = create<UiStore>()(
       closeEditor: () => set({ editing: null }),
       mapMode: '3d',
       setMapMode: (mapMode) => set({ mapMode }),
+      mapStyleMode: 'day',
+      setMapStyleMode: (mapStyleMode) => set({ mapStyleMode }),
       visibility: {
         threats: true,
         interceptors: true,
@@ -242,6 +247,7 @@ export const useUiStore = create<UiStore>()(
       name: 'mil-fi-ui',
       partialize: (s) => ({
         mapMode: s.mapMode,
+        mapStyleMode: s.mapStyleMode,
         visibility: { ...s.visibility, edit: false },
         mapViewByLayer: s.mapViewByLayer,
         lastLayerSlug: s.lastLayerSlug,
