@@ -12,11 +12,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * No dark-mode override, deliberately.
+ *
+ * @worldcoin/mini-apps-ui-kit-react ships ZERO `dark:` variants — ListItem, Chip,
+ * Input, Spinner and others hardcode `bg-gray-50` / `text-gray-900`. Flipping the
+ * page to a dark background therefore produces light components stranded on a dark
+ * page, not a dark theme. `color-scheme: light` also stops the OS from inverting
+ * form controls and scrollbars underneath us.
+ *
+ * Revisit only if the kit ships dark-mode support.
+ */
+:root {
+  color-scheme: light;
 }
 
 body {
