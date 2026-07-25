@@ -12,32 +12,33 @@
 
 ## 1. What It Is
 
-*One paragraph. What does this Mini App do, in plain language?*
+*Real-time reward system for identifying and defending critical infrastructure against drone attacks*
 
-TODO
 
 ---
 
 ## 2. The Problem
 
-*What is broken today for the people you're building for? Be specific and concrete.*
+*there is no way to proof whether the user reported the correct threat, whether the user defeated the threat and give the user reward for both in real-time using crypto payments.*
 
-TODO
+
 
 ---
 
 ## 3. The Solution
 
-*How does the Mini App solve it? What is the core loop the user goes through?*
+**
 
-TODO
+the platform allows to:
+- report the threat
+- confirm the take down of the threat
+- receive money
 
 ---
 
 ## 4. Who It's For
 
-*Who opens this in World App, and why? What do they already have in common — they all
-passed World ID verification, they're in World App's distribution.*
+* NATO and Ukraine Community*
 
 TODO
 
@@ -61,27 +62,20 @@ TODO — explain which and why.
 
 ## 6. What Makes It Different
 
-*Competitors or alternatives, and why a user picks this instead.*
+*Centralized-only archaic system for military.*
 
 TODO
 
 ---
 
-## 7. Metrics
-
-*What number tells you this is working? Pick one primary metric.*
-
-| Metric | Target | Why it matters |
-|--------|--------|----------------|
-| TODO | TODO | TODO |
 
 ---
 
 ## 8. Monetization
 
-*Free? Paid in WLD/USDC via the MiniKit pay command? Not yet?*
+*It'll free for now*
 
-TODO
+
 
 ---
 
@@ -95,9 +89,6 @@ TODO
 
 ---
 
-## 10. Long-Term Vision
-
-TODO
 
 ---
 

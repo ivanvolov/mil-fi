@@ -29,6 +29,35 @@ You:
 
 ---
 
+## 🚧 SCOPE: WORLD PART ONLY
+
+> **Set 2026-07-25 by the CEO. This overrides the multi-sponsor plan in
+> [../docs/04-submission-checklist.md](../docs/04-submission-checklist.md).**
+
+**Nazarij builds the World part only. His partner builds Hedera and 0G.**
+
+| Area | Owner | Claude's involvement |
+|------|-------|---------------------|
+| World — AgentKit (human-backed agents) | **Nazarij** | ✅ Full |
+| World — Selfie Check | **Nazarij** | ✅ Full |
+| World Mini App (`app/`) | **Nazarij** | ✅ Full |
+| Hedera — HTS / HCS / settlement | Partner | ❌ Do not build |
+| 0G — verification agents, TEE inference | Partner | ❌ Do not build |
+| `platform/` (React + Fastify + Mongo) | Partner / pre-existing | ❌ Do not modify without asking |
+
+**Consequences for how you work:**
+- **Only ask the CEO about the World portion of the PRD.** Do not interview him on Hedera,
+  0G, or platform requirements — those are his partner's scope and his answers there are
+  not authoritative.
+- Do not write Hedera or 0G integration code. If a World feature needs one of them, define
+  the **interface** (what data crosses the boundary) and hand it off — don't implement it.
+- When the payout step is needed for a World demo, use the **MiniKit pay command**, not
+  Hedera. Keeps the whole flow inside one stack.
+- Both World tracks (AgentKit + Selfie Check) count as **one** ETHGlobal partner prize,
+  so building both costs no extra slot.
+
+---
+
 ## ⚠️ PROJECT STATUS: SETUP PHASE
 
 | Item | Status |
@@ -419,11 +448,71 @@ Reference: `.claude/workflows/AGENT_EXIT_CHECKLIST.md`
 
 ## User Context
 
+> **⚠️ READ THIS BEFORE EVERY REPLY. These are hard rules, not preferences.**
+
 The CEO (Nazarij) is:
-- **Non-technical founder** — needs explicit, copy-paste-ready commands
+- **Non-technical founder** — assume NO knowledge of terminals, ports, tunnels, env vars,
+  git, or build tools. Never assume he knows what a flag, process, or config file does.
 - **Prefers understanding** — explain "why" not just "what"
 - **Values speed** — but not at the cost of breaking things
 - **Appreciates questions** — ask clarifying questions upfront
+
+### Rule 1 — Never assume jargon is understood
+
+Write for someone who has never used a terminal. On first use in a conversation, explain the
+term in one short clause: "the tunnel (the thing that makes your laptop reachable from your
+phone)". Do not say "just", "simply", or "obviously" — if it were simple he wouldn't be asking.
+
+### Rule 2 — Split ALL work into small sub-batches
+
+Never hand over one big change. Break every task into the smallest pieces that can each be
+**tested independently**, and do them one at a time.
+
+- State the full list of sub-batches up front so he can see the shape of the work
+- Do ONE sub-batch, then stop and have him verify it before starting the next
+- Each sub-batch should be verifiable in under ~2 minutes
+- If a sub-batch can't be tested on its own, it's too big or wrongly split — re-split it
+- Never start sub-batch N+1 while N is unverified
+
+Present them like this:
+
+> **Plan — 3 sub-batches**
+> 1. **[name]** — what changes, how you'll check it works
+> 2. **[name]** — …
+> 3. **[name]** — …
+>
+> Starting with #1 now. I'll stop and have you test before moving on.
+
+### Rule 3 — ALWAYS give a real step-by-step test plan
+
+Every time something is built or fixed, end with numbered, literal instructions. Never say
+"test it" or "verify it works" — say exactly which buttons to press, in order.
+
+A test plan MUST include:
+1. **Where to go** — exact URL, or the exact app/screen and how to reach it
+2. **What to do** — each tap/click/command, one numbered step each, in order
+3. **What you should see if it worked** — the concrete visible result
+4. **What it looks like if it failed** — so he can tell the difference
+5. **What to send me** — screenshot, error text, whichever is diagnostic
+
+Example of the required shape:
+
+> **How to test this (2 min)**
+> 1. On your phone, fully close MilFi — tap the ✕ top-left
+> 2. Open the camera and scan the QR at https://docs.world.org/mini-apps/quick-start/testing
+>    (App ID: `app_3e54fa415d153fbd5fd72033452b27f8`)
+> 3. ✅ **Worked**: you see the MilFi home screen with a "Verify with World ID" button
+> 4. ❌ **Failed**: you see a white screen, or any error page
+> 5. If it failed, screenshot it and send it to me — the exact error text matters
+
+Terminal commands in a test plan are copy-paste ready, one command per block, with the
+`cd` included, and a plain-English note on what each one does and whether it's safe.
+
+### Rule 4 — Do the technical steps yourself where possible
+
+Prefer doing the work over instructing him to do it. Only hand him a step when it genuinely
+requires his phone, his eyes, or his account credentials. Say plainly which steps only he
+can do, and why.
 
 When explaining:
 - Give exact file paths and line numbers
@@ -437,20 +526,49 @@ When explaining:
 
 ### Local Development
 ```bash
-cd "/Users/nazarijgrecanik/Desktop/Vibecoding/World_app/my-first-mini-app"
+cd "/Users/nazarijgrecanik/Desktop/Vibecoding/mil-fi/app/my-first-mini-app"
 npm run dev
 ```
 
+> **Working folder is `mil-fi/`** (the git repo). An older identical copy still exists at
+> `~/Desktop/Vibecoding/World_app/` — it is NOT tracked by git. Don't edit it; delete it once
+> you're confident nothing is left behind there.
+
 ### Expose for phone testing
 ```bash
-ngrok http 3000
-# Paste the https URL + your App ID at:
-# https://docs.world.org/mini-apps/quick-start/testing
+cloudflared tunnel --url http://localhost:3000
+```
+Then, every time the tunnel URL changes:
+1. Set `AUTH_URL` in `my-first-mini-app/.env.local` to the printed `https://….trycloudflare.com` URL
+2. Restart `npm run dev` (Next reads `.env.local` only at boot)
+3. Update `integration_url` in the Developer Portal, then re-scan the QR
+
+The QR encodes `worldcoin.org/mini-app?app_id=…`, and World App resolves the `app_id` to
+`integration_url` at scan time — so the **same QR keeps working**; only `integration_url`
+needs updating. Claude can do step 3 without the MCP server being loaded, since the portal
+is plain HTTP JSON-RPC (key in `.mcp.json`):
+```bash
+KEY=$(python3 -c "import json;print(json.load(open('.mcp.json'))['mcpServers']['world-developer-portal']['headers']['Authorization'])")
+curl -s -X POST https://developer.world.org/api/mcp \
+  -H "Authorization: $KEY" -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"configure_mini_app",
+       "arguments":{"app_id":"app_3e54fa415d153fbd5fd72033452b27f8","integration_url":"<NEW_URL>"}}}'
 ```
 
+> **Not ngrok.** ngrok's free tier injects an interstitial "you are visiting an ngrok site"
+> page in front of all HTML traffic. World App's webview can't click through it and can't
+> set the `ngrok-skip-browser-warning` header on a top-level navigation, so the Mini App
+> fails to load. Only a paid ngrok plan removes it.
+> Ref: https://ngrok.com/docs/pricing-limits/free-plan-limits
+
 ### Kill stuck port
+⚠️ Kill the dev server by name, not by port. `lsof -ti:3000` also matches `cloudflared`,
+because the tunnel holds an open connection *to* port 3000 — killing by port takes the
+tunnel down with it and you get a brand-new URL.
 ```bash
-lsof -ti:3000 | xargs kill -9
+pkill -f "next dev"          # correct: leaves the tunnel running
+# lsof -ti:3000 | xargs kill -9   # only when you also want to kill the tunnel
 ```
 
 ---
