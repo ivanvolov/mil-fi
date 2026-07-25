@@ -128,6 +128,7 @@ export function explain(
  * place that needs to change.
  */
 export async function resolveCredentials(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- stub until IDKit session is wired (see TODO above)
   _request: NextRequest,
 ): Promise<Credentials> {
   return ANONYMOUS;
