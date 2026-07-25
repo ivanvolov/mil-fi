@@ -1,46 +1,58 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, Camera, ScanEye, Crosshair, CheckCheck, Coins, ScrollText, EyeOff, ZoomIn } from 'lucide-react';
+import { Plus, Camera, ScanEye, Crosshair, CheckCheck, Coins, ScrollText, EyeOff, ZoomIn, Zap, Radar, Boxes } from 'lucide-react';
 import type { LayerFull } from '@shared/schemas/layer-full';
 import type { LatLng } from '@shared/schemas/common';
 import type { TeamCreate } from '@shared/schemas/team';
 import type { DrawingCreate, DrawingKind } from '@shared/schemas/drawing';
 import { useUiStore, isSelected, type SelectionKind } from '../../stores/uiStore';
 import { useCreateTeam, useCreateDrawing } from '../../queries/useMutations';
+import { useMe, type Role } from '../../queries/useMe';
 import { drawingKindShortLabel, drawingKindFullLabel, drawingGeometryDesc } from '../../lib/drawing-labels';
 import { LauncherCreateDialog } from '../dialogs/LauncherCreateDialog';
 import { ThreatSimulatorDialog } from '../dialogs/ThreatSimulatorDialog';
 import { AssetManagerDialog } from '../dialogs/AssetManagerDialog';
 
 /** The 6 steps of one engagement, per docs/05-architecture-bounty-map.md ("Поток одного
- *  сбития"). Each button is the UI entry point for its step; backends land incrementally. */
-const FLOW_STEPS = [
+ *  сбития"). Each button is the UI entry point for its step; backends land incrementally.
+ *  `roles` = who sees the button. Agent/settle steps are autonomous pipeline stages —
+ *  only admin gets manual triggers; other roles meet them as status in the ledger. */
+const FLOW_STEPS: Array<{
+  key: string; label: string; icon: typeof Camera; partner: string; color: string;
+  desc: string; roles: Role[];
+}> = [
   {
     key: 'report', label: 'Report Threat', icon: Camera, partner: 'WORLD', color: '#06b6d4',
+    roles: ['spotter', 'admin'],
     desc: 'Spotter (level 2, Selfie-verified) submits photo + coordinates + time. Entry point of the whole funnel.',
   },
   {
     key: 'agent-a', label: 'Verify · Agent A', icon: ScanEye, partner: '0G', color: '#a78bfa',
-    desc: 'Vision agent on 0G Compute: threat or not, class (Shahed / UAV / aircraft), confidence 0..1. TEE-sealed inference.',
+    roles: ['admin'],
+    desc: 'Vision agent on 0G Compute: threat or not, class (Shahed / UAV / aircraft), confidence 0..1. TEE-sealed inference. Runs autonomously; manual trigger is admin-only.',
   },
   {
     key: 'engage', label: 'Record Engagement', icon: Crosshair, partner: 'HCS', color: '#f59e0b',
+    roles: ['military', 'admin'],
     desc: 'Unit (level 3, document-verified) engages the target. Platform records who / with what / when / which threat.',
   },
   {
     key: 'agent-b', label: 'Confirm Kill · Agent B', icon: CheckCheck, partner: '0G', color: '#a78bfa',
-    desc: 'Second 0G agent on the post-strike photo: target gone / debris / detonation signature, consistent with Agent A.',
+    roles: ['military', 'admin'],
+    desc: 'Unit uploads the post-strike photo; second 0G agent checks: target gone / debris / detonation signature, consistent with Agent A.',
   },
   {
     key: 'settle', label: 'Settle & Pay', icon: Coins, partner: 'HEDERA', color: '#f59e0b',
-    desc: 'Settle-agent reads the HCS journal, applies the government rule (≥95% + kill confirmed), checks World human-backing, pays DEFPOINT via HTS.',
+    roles: ['government', 'admin'],
+    desc: 'Settle-agent reads the HCS journal, applies the government rule (≥95% + kill confirmed), checks World human-backing, pays DEFPOINT via HTS. Government sets rules + freeze; the agent pays autonomously.',
   },
   {
     key: 'ledger', label: 'Evidence Ledger', icon: ScrollText, partner: 'HEDERA', color: '#f59e0b',
+    roles: ['government', 'military', 'admin'],
     desc: 'Full audit trail on Hedera HCS: photo hashes, both verdicts, payout receipt — consensus-timestamped, auditable on HashScan.',
   },
-] as const;
+];
 
 function Accordion({
   label,
@@ -184,6 +196,19 @@ export function LeftRail({ data }: { data: LayerFull }) {
   const [launcherCreateOpen, setLauncherCreateOpen] = useState(false);
   const [activeFlowStep, setActiveFlowStep] = useState<string | null>(null);
 
+  // Role gating: undefined while /auth/me loads → most-restricted view (no flash of
+  // privileged UI). Server enforces the same rules on every mutation.
+  const role = useMe().data?.role;
+  const isAdmin = role === 'admin';
+  const isSpotter = role === 'spotter';
+  const visibleFlowSteps = role ? FLOW_STEPS.filter((s) => s.roles.includes(role)) : [];
+
+  // Legacy operator tools — admin-only.
+  const setSimStage = useUiStore((s) => s.setSimStage);
+  const setSimSource = useUiStore((s) => s.setSimSource);
+  const setAssetStage = useUiStore((s) => s.setAssetStage);
+  const setBulkOrchestrate = useUiStore((s) => s.setBulkOrchestrate);
+
   // Shift and ⌘/Ctrl are orthogonal modifiers: Shift = additive selection, ⌘/Ctrl = zoom.
   //   Plain click            → single-select (or deselect if the sole selected row).
   //   Shift click            → toggle in/out of the multi-selection. No map movement.
@@ -283,7 +308,9 @@ export function LeftRail({ data }: { data: LayerFull }) {
         </Accordion>
       )}
 
-      {visibility.teams && (
+      {/* Opsec: spotters (civilian level 2) never see air-defense assets — crews and
+          launchers are hidden from the list AND from the map layers. */}
+      {visibility.teams && !isSpotter && (
         <Accordion
           label="Crews"
           count={teams.length}
@@ -303,7 +330,7 @@ export function LeftRail({ data }: { data: LayerFull }) {
         </Accordion>
       )}
 
-      {visibility.interceptors && (
+      {visibility.interceptors && !isSpotter && (
         <Accordion
           label="Launchers"
           count={interceptors.length}
@@ -441,7 +468,7 @@ export function LeftRail({ data }: { data: LayerFull }) {
         );
       })()}
       <div className="px-2 py-2 border-t border-line space-y-1.5">
-        {FLOW_STEPS.map((step) => {
+        {visibleFlowSteps.map((step) => {
           const Icon = step.icon;
           const active = activeFlowStep === step.key;
           return (
@@ -460,6 +487,41 @@ export function LeftRail({ data }: { data: LayerFull }) {
           );
         })}
       </div>
+
+      {/* Legacy operator tools — demo/admin only. */}
+      {isAdmin && (
+        <div className="px-2 pb-2 space-y-1.5">
+          <div className="text-[9px] font-mono uppercase tracking-wider text-muted px-1 pt-1">Admin tools</div>
+          <button
+            type="button"
+            onClick={() => { setSimSource('random'); setSimStage('setup'); }}
+            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
+          >
+            <Zap size={12} /> Simulate Threats
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSimSource('api'); setSimStage('setup'); }}
+            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
+          >
+            <Radar size={12} /> Simulate (Real Detections)
+          </button>
+          <button
+            type="button"
+            onClick={() => setAssetStage('setup')}
+            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
+          >
+            <Boxes size={12} /> Manage Assets
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulkOrchestrate(true)}
+            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
+          >
+            <Crosshair size={12} /> Orchestrate
+          </button>
+        </div>
+      )}
 
       <LauncherCreateDialog
         open={launcherCreateOpen}

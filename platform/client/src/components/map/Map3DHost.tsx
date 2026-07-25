@@ -13,6 +13,7 @@ import {
   useUpdateThreatGeometry,
 } from '../../queries/useMutations';
 import { useOrchestrationFocus } from '../../lib/orchestrationFocus';
+import { useMe } from '../../queries/useMe';
 import { glyphHtml, threatGlyphHtml } from './glyphs';
 
 /** CARTO GL basemaps (OpenMapTiles schema, no API key).
@@ -128,6 +129,8 @@ export function Map3DHost({ data }: { data: LayerFull }) {
 
   const styleMode = useUiStore((s) => s.mapStyleMode);
   const visibility = useUiStore((s) => s.visibility);
+  // Opsec: spotters (civilian level 2) never see air-defense assets on the map.
+  const assetsHidden = useMe().data?.role === 'spotter';
   const selection = useUiStore((s) => s.selection);
   const selections = useUiStore((s) => s.selections);
   const setSelection = useUiStore((s) => s.setSelection);
@@ -309,7 +312,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
       });
     };
 
-    if (visibility.interceptors) {
+    if (visibility.interceptors && !assetsHidden) {
       for (const i of data.interceptors) {
         if (focus && !focus.launcherIds.has(i._id)) continue;
         const t = typesById.get(i.typeId);
@@ -351,7 +354,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
       }
     }
 
-    if (visibility.teams) {
+    if (visibility.teams && !assetsHidden) {
       for (const c of data.teams) {
         if (focus && !focus.teamIds.has(c._id)) continue;
         const selected = isSelected(selections, 'team', c._id);
@@ -423,7 +426,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
   }, [
     data, typesById, threadCountByInterceptor, threadCountByTeam, visibility.interceptors,
     visibility.teams, visibility.threats, selections, setSelection, editMode, focus,
-    updateInterceptorPos, updateTeamPos, updateThreatGeom, styleReady,
+    updateInterceptorPos, updateTeamPos, updateThreatGeom, styleReady, assetsHidden,
   ]);
 
   // ---------- threat geometry (paths, divergence box, detonation) ----------
@@ -546,7 +549,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
     if (!map || !styleReady) return;
 
     const feats: any[] = [];
-    if (visibility.coverage) {
+    if (visibility.coverage && !assetsHidden) {
       let visibleIds: Set<string>;
       if (focus) {
         visibleIds = focus.launcherIds;
@@ -579,7 +582,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
         paint: { 'line-color': ['get', 'color'], 'line-width': 1.4, 'line-opacity': 0.95 },
       });
     }
-  }, [data.interceptors, data.threads, typesById, selections, visibility.coverage, focus, styleReady]);
+  }, [data.interceptors, data.threads, typesById, selections, visibility.coverage, focus, styleReady, assetsHidden]);
 
   // ---------- control-thread lines (crew ↔ launcher) ----------
   useEffect(() => {
@@ -587,7 +590,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
     if (!map || !styleReady) return;
 
     const feats: any[] = [];
-    if (visibility.controls && visibility.teams && visibility.interceptors) {
+    if (visibility.controls && visibility.teams && visibility.interceptors && !assetsHidden) {
       const teamById = new Map(data.teams.map((t) => [t._id, t]));
       const interById = new Map(data.interceptors.map((i) => [i._id, i]));
       for (const th of data.threads) {
@@ -611,7 +614,7 @@ export function Map3DHost({ data }: { data: LayerFull }) {
         paint: { 'line-color': '#06b6d4', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [2.5, 2] },
       });
     }
-  }, [data.teams, data.interceptors, data.threads, visibility.controls, visibility.teams, visibility.interceptors, styleReady]);
+  }, [data.teams, data.interceptors, data.threads, visibility.controls, visibility.teams, visibility.interceptors, styleReady, assetsHidden]);
 
   // ---------- ⌘-click selection framing ----------
   useEffect(() => {

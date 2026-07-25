@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import type { LayerFull } from '@shared/schemas/layer-full';
 import type { LatLng } from '@shared/schemas/common';
 import { useUiStore } from '../../stores/uiStore';
+import { useMe } from '../../queries/useMe';
 import { InterceptorLayer } from './layers/InterceptorLayer';
 import { TeamLayer } from './layers/TeamLayer';
 import { ThreatLayer } from './layers/ThreatLayer';
@@ -247,6 +248,8 @@ export function MapHost({ data }: { data: LayerFull }) {
   const planning = useUiStore((s) => s.assetStage !== 'idle');
   // Either overlay (threat sim or asset planner) takes over the map and hides the live layers.
   const overlayActive = simulating || planning;
+  // Opsec: spotters (civilian level 2) never see air-defense assets on the map.
+  const assetsHidden = useMe().data?.role === 'spotter';
 
   // pull a snapshot of the persisted view ONCE per layer mount — MapContainer
   // only honors center/zoom at mount time, so we key the container on layerId.
@@ -295,16 +298,16 @@ export function MapHost({ data }: { data: LayerFull }) {
         editMode={!overlayActive && visibility.edit}
       />
 
-      {!overlayActive && <CoverageLayer interceptors={data.interceptors} typesById={typesById} threads={data.threads} data={data} />}
-      {!overlayActive && visibility.controls && visibility.teams && visibility.interceptors && (
+      {!overlayActive && !assetsHidden && <CoverageLayer interceptors={data.interceptors} typesById={typesById} threads={data.threads} data={data} />}
+      {!overlayActive && !assetsHidden && visibility.controls && visibility.teams && visibility.interceptors && (
         <ControlsLayer threads={data.threads} interceptors={data.interceptors} teams={data.teams} />
       )}
       {!overlayActive && visibility.threats && <ThreatLayer threats={data.threats} threatTypes={data.types.threat} data={data} />}
-      {!overlayActive && visibility.interceptors && <InterceptorLayer interceptors={data.interceptors} typesById={typesById} threads={data.threads} data={data} />}
-      {!overlayActive && visibility.teams && <TeamLayer teams={data.teams} threads={data.threads} data={data} />}
+      {!overlayActive && !assetsHidden && visibility.interceptors && <InterceptorLayer interceptors={data.interceptors} typesById={typesById} threads={data.threads} data={data} />}
+      {!overlayActive && !assetsHidden && visibility.teams && <TeamLayer teams={data.teams} threads={data.threads} data={data} />}
       {!overlayActive && <EditHandlesLayer threats={data.threats} />}
       {!overlayActive && <DrawingEditHandlesLayer drawings={data.drawings} />}
-      {!overlayActive && <AssignmentLinkLayer data={data} />}
+      {!overlayActive && !assetsHidden && <AssignmentLinkLayer data={data} />}
       <SimulatorOverlayLayer />
       <AssetPlannerOverlayLayer />
       <MfgHeatmapLayer data={data} />

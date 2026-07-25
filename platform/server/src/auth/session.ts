@@ -6,10 +6,17 @@ import { config } from '../config.js';
 export const COOKIE_NAME = 'hoc_sid';
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** Access roles, mirroring the three human levels of docs/05-architecture-bounty-map.md
+ *  plus `admin` (demo operator, full access). Invites without a role are treated as
+ *  admin so pre-role codes keep working. */
+export const ROLES = ['admin', 'government', 'military', 'spotter'] as const;
+export type Role = (typeof ROLES)[number];
+
 export interface SessionRow extends Document {
   _id: string;
   code: string;
   label: string;
+  role?: Role;
   createdAt: Date;
   expiresAt: Date;
 }
@@ -17,6 +24,7 @@ export interface SessionRow extends Document {
 export interface InviteRow extends Document {
   _id: string;
   label: string;
+  role?: Role;
   createdAt: Date;
   revoked?: boolean;
 }
@@ -50,6 +58,7 @@ export async function createSession(
     _id: newSessionId(),
     code: invite._id,
     label: invite.label,
+    role: invite.role ?? 'admin',
     createdAt: now,
     expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
   };

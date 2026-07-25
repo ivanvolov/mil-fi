@@ -21,7 +21,7 @@ import { registerEngagementRoutes } from './routes/engagements.js';
 import { closeHedera } from './hedera/client.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerHookRoutes } from './routes/hooks.js';
-import { makeRequireSession } from './auth/middleware.js';
+import { makeRequireSession, requireRoleForWrite } from './auth/middleware.js';
 import { HttpError } from './lib/crud.js';
 import { refreshFromProdIfStaging } from './lib/refreshDb.js';
 import { runFieldMigrations } from './lib/migrateFields.js';
@@ -96,6 +96,7 @@ async function main() {
   // Everything else under /api/v1 requires an authenticated session.
   await app.register(async (api) => {
     api.addHook('preHandler', requireSession);
+    api.addHook('preHandler', requireRoleForWrite);
     await registerTypeRoutes(api, collections);
     await registerLayerRoutes(api, collections);
     await registerInterceptorRoutes(api, collections);

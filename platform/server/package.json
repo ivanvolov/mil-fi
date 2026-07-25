@@ -11,6 +11,7 @@
     "migrate:specs": "tsx src/scripts/syncSpecs.ts",
     "migrate:fields": "tsx src/scripts/migrateFields.ts",
     "seed:invites": "tsx src/scripts/seedInvites.ts",
+    "seed:roles": "tsx src/scripts/seedRoleInvites.ts",
     "backup:layers": "tsx src/scripts/backupAllLayers.ts",
     "refresh-db": "tsx src/scripts/refreshStagingDb.ts",
     "hedera:setup": "tsx src/scripts/hederaSetup.ts",
