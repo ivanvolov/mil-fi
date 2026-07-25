@@ -29,6 +29,19 @@ const RuleInput = z
   })
   .optional();
 
+const AuthorizationInput = z
+  .object({
+    engagementId: z.string(),
+    amount: z.string(),
+    currency: z.string(),
+    humanId: z.string(),
+    tier: z.number(),
+    issuedAt: z.number(),
+    expiresAt: z.number(),
+    nonce: z.string(),
+  })
+  .optional();
+
 const RunBody = z.object({
   unitId: z.string().min(1),
   reportImage: ImageInput,
@@ -36,6 +49,9 @@ const RunBody = z.object({
   coords: z.object({ lat: z.number(), lon: z.number() }).optional(),
   time: z.string().optional(),
   rule: RuleInput,
+  authorization: AuthorizationInput,
+  signature: z.string().optional(),
+  operatorNullifier: z.string().optional(),
 });
 
 /** Never leak custodied private keys over the API. */

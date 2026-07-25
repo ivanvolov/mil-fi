@@ -1,6 +1,8 @@
 import type { AgentAVerdict, AgentBVerdict } from '../verification/agents.js';
 import { evidence, submitEvidence, type EvidenceReceipt } from './journal.js';
 import { payDefpoint, freezeUnit } from './token.js';
+import { worldAuthEnabled } from '../config.js';
+import { verifyPayoutAuthorization, type PayoutAuthorization } from '../world/auth.js';
 
 /**
  * The settle-agent's brain: apply the government-level rule to a completed
@@ -65,12 +67,36 @@ export function decideSettlement(
 export interface SettleInput {
   engagementId: string;
   unitAccountId: string;
-  /** World human-backing check result (step 5). A bot with no human backing
-   * is rejected before any policy check. */
+  /** Demo-mode human-backing flag. Used only when World auth is NOT configured;
+   * when it is, a valid signed authorization is required instead. */
   humanBacked: boolean;
   a: AgentAVerdict;
   b: AgentBVerdict;
   rule?: SettlementRule;
+  /** Interface 1: signed payout authorization from World. Required to pay when
+   * WORLD_SIGNER_ADDRESS is configured. */
+  authorization?: PayoutAuthorization;
+  signature?: string;
+}
+
+/**
+ * The human-backing gate. With World auth on, a valid signed authorization is
+ * mandatory (a bot never has one → refused). With it off, we fall back to the
+ * demo boolean so the pipeline and the negative scenario still run standalone.
+ */
+async function checkAuthorized(input: SettleInput): Promise<{ ok: boolean; reason: string }> {
+  if (worldAuthEnabled) {
+    if (!input.authorization || !input.signature) {
+      return { ok: false, reason: 'no signed authorization (not human-backed)' };
+    }
+    const res = await verifyPayoutAuthorization(input.authorization, input.signature, input.engagementId);
+    return res.ok
+      ? { ok: true, reason: `authorized by World (human ${res.humanId}, tier ${res.tier})` }
+      : { ok: false, reason: `authorization rejected: ${res.reason}` };
+  }
+  return input.humanBacked
+    ? { ok: true, reason: 'demo human-backing flag set' }
+    : { ok: false, reason: 'no human backing (World)' };
 }
 
 export interface SettleOutcome {
@@ -88,15 +114,16 @@ export interface SettleOutcome {
  * journal failure — the on-chain money move is what matters; journaling degrades.
  */
 export async function settleEngagement(input: SettleInput): Promise<SettleOutcome> {
-  const { engagementId, unitAccountId, humanBacked, a, b } = input;
+  const { engagementId, unitAccountId, a, b } = input;
   const rule = input.rule ?? DEFAULT_RULE;
 
-  // Negative path: no human behind the agent → refuse before policy.
-  if (!humanBacked) {
+  // Negative path: no valid human-backing (bot / bad authorization) → refuse before policy.
+  const authz = await checkAuthorized(input);
+  if (!authz.ok) {
     const journal = await submitEvidence(
-      evidence('reject', engagementId, { reason: 'no-human-backing', unitAccountId }),
+      evidence('reject', engagementId, { reason: authz.reason, unitAccountId }),
     );
-    return { outcome: 'rejected', reason: 'claim rejected: no human backing (World)', payout: 0, journal };
+    return { outcome: 'rejected', reason: `claim rejected: ${authz.reason}`, payout: 0, journal };
   }
 
   const decision = decideSettlement(a, b, rule);

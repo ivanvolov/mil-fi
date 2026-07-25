@@ -52,6 +52,19 @@ export const config = {
   telegramBotToken: optional('TELEGRAM_BOT_TOKEN'),
   telegramChatId: optional('TELEGRAM_CHAT_ID'),
 
+  // World integration (docs/05-integration-contract.md). All optional: with no
+  // signer configured, the settle-agent falls back to the humanBacked boolean
+  // (demo mode) instead of verifying a signed payout authorization.
+  world: {
+    // Base URL of the World mini-app service we call for Interface 3 (verdict push).
+    baseUrl: (process.env.WORLD_BASE_URL ?? '').replace(/\/$/, ''),
+    // Shared bearer token, both directions (demo simplicity).
+    serviceToken: process.env.WORLD_SERVICE_TOKEN ?? '',
+    // The address that signs payout authorizations (Interface 1). When set, the
+    // payment path REQUIRES a valid signed authorization before releasing funds.
+    signerAddress: (process.env.WORLD_SIGNER_ADDRESS ?? '').toLowerCase(),
+  },
+
   // 0G Compute router (OpenAI-compatible). Hosts the vision agents (A + B).
   // Key reused from the verification/ harness; falls back to root OG_API_KEY.
   zerog: {
@@ -78,3 +91,10 @@ export const config = {
 /** True only when operator creds are present — guards every live Hedera call so
  * the platform degrades gracefully with no account configured. */
 export const hederaEnabled = Boolean(config.hedera.operatorId && config.hedera.operatorKey);
+
+/** True when a World signer is configured — the payment path then REQUIRES a
+ * valid signed payout authorization (Interface 1) instead of the demo fallback. */
+export const worldAuthEnabled = Boolean(config.world.signerAddress);
+
+/** True when we can reach the World service to push verdicts (Interface 3). */
+export const worldClientEnabled = Boolean(config.world.baseUrl && config.world.serviceToken);

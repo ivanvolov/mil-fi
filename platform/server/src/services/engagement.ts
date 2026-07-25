@@ -4,6 +4,8 @@ import { runAgentA, runAgentB, type ImageInput } from '../verification/agents.js
 import { evidence, submitEvidence } from '../hedera/journal.js';
 import { createUnitAccount, associateAndGrantKyc } from '../hedera/token.js';
 import { settleEngagement, type SettlementRule } from '../hedera/settle.js';
+import { postEngagementVerdict } from '../world/client.js';
+import type { PayoutAuthorization } from '../world/auth.js';
 import { hederaEnabled } from '../config.js';
 
 /**
@@ -72,6 +74,12 @@ export interface RunEngagementInput {
   coords?: { lat: number; lon: number };
   time?: string;
   rule?: SettlementRule;
+  /** Interface 1: signed payout authorization from World (required to pay when
+   * World auth is configured). */
+  authorization?: PayoutAuthorization;
+  signature?: string;
+  /** Operator's World nullifier, reported to World in the verdict (Interface 3). */
+  operatorNullifier?: string;
 }
 
 export async function runEngagement(c: Collections, input: RunEngagementInput) {
@@ -116,6 +124,16 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     }),
   );
 
+  // Step 5b — Interface 3: report the verdict to World. When both flags are true,
+  // the operator's agent may autonomously pull a payout authorization.
+  const worldVerdict = await postEngagementVerdict({
+    engagementId,
+    threatConfirmed: a.verdict.is_threat,
+    killConfirmed: b.verdict.destroyed,
+    operatorNullifier: input.operatorNullifier,
+    evidenceHashes: [a.imageHash, b.imageHash],
+  });
+
   // Step 6 — settle-agent decides + acts (also journals payout/freeze/reject).
   const settlement = await settleEngagement({
     engagementId,
@@ -124,6 +142,8 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     a: a.verdict,
     b: b.verdict,
     rule: input.rule,
+    authorization: input.authorization,
+    signature: input.signature,
   });
 
   const doc = {
@@ -136,6 +156,7 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     agentA: { verdict: a.verdict, requestId: a.requestId, model: a.model, imageHash: a.imageHash, latencyMs: a.latencyMs, journal: aJournal },
     downing: { journal: downingJournal },
     agentB: { verdict: b.verdict, requestId: b.requestId, model: b.model, imageHash: b.imageHash, latencyMs: b.latencyMs, journal: bJournal },
+    worldVerdict,
     settlement,
     status: settlement.outcome,
     createdAt: new Date(),
