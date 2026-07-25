@@ -233,7 +233,7 @@ export const useUiStore = create<UiStore>()(
       setSandboxMapView: (sandboxMapView) => set({ sandboxMapView }),
     }),
     {
-      name: 'hoc-orchestration-ui',
+      name: 'mil-fi-ui',
       partialize: (s) => ({
         visibility: { ...s.visibility, edit: false },
         mapViewByLayer: s.mapViewByLayer,

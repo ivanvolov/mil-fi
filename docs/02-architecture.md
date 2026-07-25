@@ -39,7 +39,7 @@
 
 ### 1. Platform (exists today)
 
-The `platform/` app is our real operational tool: layered scenarios on a live map, interceptor/threat/crew CRUD with optimistic concurrency, envelope modeling, RF propagation, threat-path prediction, and orchestration algorithms (`algos/`) that assign interceptors to threats.
+The `platform/` app is our real operational tool: layered scenarios on a live map, interceptor/threat/crew CRUD with optimistic concurrency, envelope modeling, threat-path prediction, and orchestration algorithms (`algos/`) that assign interceptors to threats.
 
 For the hackathon it gains:
 
