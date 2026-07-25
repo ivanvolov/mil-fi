@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, Camera, ScanEye, Crosshair, CheckCheck, Coins, ScrollText, EyeOff, ZoomIn, Zap, Radar, Boxes } from 'lucide-react';
+import { Plus, Camera, ScanEye, Crosshair, CheckCheck, Coins, ScrollText, EyeOff, ZoomIn } from 'lucide-react';
 import type { LayerFull } from '@shared/schemas/layer-full';
 import type { LatLng } from '@shared/schemas/common';
 import type { TeamCreate } from '@shared/schemas/team';
@@ -199,15 +199,8 @@ export function LeftRail({ data }: { data: LayerFull }) {
   // Role gating: undefined while /auth/me loads → most-restricted view (no flash of
   // privileged UI). Server enforces the same rules on every mutation.
   const role = useMe().data?.role;
-  const isAdmin = role === 'admin';
   const isSpotter = role === 'spotter';
   const visibleFlowSteps = role ? FLOW_STEPS.filter((s) => s.roles.includes(role)) : [];
-
-  // Legacy operator tools — admin-only.
-  const setSimStage = useUiStore((s) => s.setSimStage);
-  const setSimSource = useUiStore((s) => s.setSimSource);
-  const setAssetStage = useUiStore((s) => s.setAssetStage);
-  const setBulkOrchestrate = useUiStore((s) => s.setBulkOrchestrate);
 
   // Shift and ⌘/Ctrl are orthogonal modifiers: Shift = additive selection, ⌘/Ctrl = zoom.
   //   Plain click            → single-select (or deselect if the sole selected row).
@@ -488,40 +481,8 @@ export function LeftRail({ data }: { data: LayerFull }) {
         })}
       </div>
 
-      {/* Legacy operator tools — demo/admin only. */}
-      {isAdmin && (
-        <div className="px-2 pb-2 space-y-1.5">
-          <div className="text-[9px] font-mono uppercase tracking-wider text-muted px-1 pt-1">Admin tools</div>
-          <button
-            type="button"
-            onClick={() => { setSimSource('random'); setSimStage('setup'); }}
-            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-          >
-            <Zap size={12} /> Simulate Threats
-          </button>
-          <button
-            type="button"
-            onClick={() => { setSimSource('api'); setSimStage('setup'); }}
-            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-          >
-            <Radar size={12} /> Simulate (Real Detections)
-          </button>
-          <button
-            type="button"
-            onClick={() => setAssetStage('setup')}
-            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-          >
-            <Boxes size={12} /> Manage Assets
-          </button>
-          <button
-            type="button"
-            onClick={() => setBulkOrchestrate(true)}
-            className="w-full flex items-center justify-center gap-1.5 border border-line hover:border-amber text-muted hover:text-amber font-mono text-[10px] uppercase tracking-wider px-2 py-1.5"
-          >
-            <Crosshair size={12} /> Orchestrate
-          </button>
-        </div>
-      )}
+      {/* Legacy operator tools (simulate threats, manage assets, orchestrate) are hidden
+          for the bounty demo — their dialogs stay mounted below and can be re-wired if needed. */}
 
       <LauncherCreateDialog
         open={launcherCreateOpen}
