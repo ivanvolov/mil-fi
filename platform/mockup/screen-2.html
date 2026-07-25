@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HOC — Simulation settings</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0a0d12; overflow: hidden; }
+  body { font-family: 'Inter', system-ui, sans-serif; color: #e7e9ea; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "tnum" 1, "ss01" 1; }
+  .uppercase-label { text-transform: uppercase; letter-spacing: 0.08em; }
+  .panel { background: #0d1117; }
+  .border-line { border-color: #1f2630; }
+  .text-secondary { color: #8b919c; }
+  .text-muted { color: #4a525e; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 2px; font-size: 10px; line-height: 14px; }
+
+  .mission-select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-color: #0d1117;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%238b919c' fill='none' stroke-width='1.2'/></svg>");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 10px 6px;
+    border: 1px solid #1f2630; color: #e7e9ea;
+    font-size: 12px; padding: 4px 26px 4px 10px;
+    border-radius: 2px; cursor: pointer; outline: none;
+  }
+
+  .split { height: calc(100vh - 48px); display: flex; }
+  .col-left  { flex: 1; min-width: 0; overflow-y: auto; border-right: 1px solid #1f2630; }
+  .col-right { flex: 1; min-width: 0; overflow-y: auto; }
+
+  .intro {
+    padding: 14px 24px;
+    font-size: 11px; color: #8b919c; line-height: 1.55;
+    border-bottom: 1px solid #1f2630;
+  }
+  .intro b { color: #e7e9ea; font-weight: 500; }
+
+  .cards { padding: 16px 24px 40px; display: flex; flex-direction: column; gap: 12px; }
+
+  .card {
+    background: #0d1117;
+    border: 1px solid #1f2630;
+    border-radius: 2px;
+  }
+  .card-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #1f2630;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .card-head .lhs { display: flex; align-items: center; gap: 14px; }
+  .card-head .big-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700; line-height: 1;
+    color: #06b6d4;
+  }
+  .card-head .title-block { display: flex; flex-direction: column; gap: 3px; }
+  .card-head .title {
+    font-size: 10px; color: #8b919c;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  .section { padding: 12px 16px; border-bottom: 1px solid #1f2630; }
+  .section:last-child { border-bottom: none; }
+  .section .label {
+    font-size: 10px; color: #8b919c; letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .section .label .v {
+    font-family: 'JetBrains Mono', monospace; color: #06b6d4; text-transform: none; letter-spacing: 0; font-size: 11px;
+  }
+
+  /* sliders */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; background: #1f2630; border-radius: 2px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; background: #06b6d4; border: 1px solid #0a0d12; border-radius: 50%; cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px; background: #06b6d4; border: 1px solid #0a0d12; border-radius: 50%; cursor: pointer;
+  }
+
+  .variance-row {
+    display: grid; grid-template-columns: 1fr 70px; gap: 12px; align-items: center;
+  }
+  .variance-row .read {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #e7e9ea; text-align: right;
+  }
+  .variance-row .read .u { color: #8b919c; font-size: 10px; margin-left: 2px; }
+
+  .cls-row {
+    display: grid; grid-template-columns: 1fr 130px 44px 20px; gap: 10px; align-items: center;
+    padding: 5px 0;
+  }
+  .cls-row select {
+    appearance: none; -webkit-appearance: none;
+    background-color: #0a0d12;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%238b919c' fill='none' stroke-width='1.2'/></svg>");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 10px 6px;
+    border: 1px solid #1f2630; color: #e7e9ea;
+    font-size: 11px; padding: 4px 22px 4px 8px;
+    border-radius: 2px; cursor: pointer; outline: none; width: 100%;
+  }
+  .cls-row select:focus { border-color: #06b6d4; }
+  .cls-row .pct {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #e7e9ea; text-align: right;
+  }
+  .cls-row .pct .u { color: #8b919c; }
+  .cls-row .rm {
+    color: #4a525e; cursor: pointer; text-align: center; font-size: 14px; line-height: 1;
+  }
+  .cls-row .rm:hover { color: #ef4444; }
+
+  .cls-foot {
+    margin-top: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cls-foot .sum { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+  .cls-foot .add {
+    padding: 3px 10px; border: 1px solid #06b6d4; color: #06b6d4;
+    background: transparent; border-radius: 2px; font-size: 10px; cursor: pointer;
+  }
+  .cls-foot .add:hover { background: #0a1a1f; }
+  .cls-foot .add:disabled {
+    border-color: #1f2630; color: #4a525e; cursor: not-allowed; background: transparent;
+  }
+
+  /* ============== visualizations ============== */
+  /* left: stacked weapon-distribution bar + legend */
+  .stack-bar {
+    display: flex; height: 10px; background: #0a0d12;
+    border: 1px solid #1f2630; margin-bottom: 8px;
+  }
+  .stack-bar > div { height: 100%; transition: width 0.08s linear; }
+  .stack-legend {
+    display: flex; flex-wrap: wrap; gap: 6px 10px;
+    font-size: 10px; color: #8b919c;
+  }
+  .leg-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .leg-swatch { width: 9px; height: 9px; display: inline-block; }
+  .leg-pct { color: #e7e9ea; font-weight: 500; }
+
+  /* right: scatter cloud */
+  .scatter-host {
+    background: #08090c;
+    border: 1px solid #1f2630;
+    position: relative;
+    cursor: crosshair;
+  }
+  .scatter-host svg { display: block; width: 100%; height: 180px; }
+</style>
+</head>
+<body>
+
+<!-- TOP STRIP — same chrome as screen-1 -->
+<header class="h-12 border-b border-line flex items-center gap-5 px-5 panel shrink-0">
+  <div class="text-lg font-bold tracking-[0.25em]">HOC</div>
+
+  <div class="text-secondary uppercase-label text-[10px]">
+    Simulation settings
+  </div>
+
+  <div class="flex-1"></div>
+
+  <button id="copy-profiles" class="w-7 h-7 rounded-sm border border-line text-secondary hover:text-[#06b6d4] hover:border-[#06b6d4] flex items-center justify-center" title="copy profiles JSON (⌘⇧E)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="1"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>
+  </button>
+</header>
+
+<div id="toast" style="position:fixed; bottom:24px; left:50%; transform:translate(-50%, 120px); background:#0d1117; border:1px solid #06b6d4; color:#06b6d4; padding:8px 16px; font-family:'JetBrains Mono', monospace; font-size:12px; transition:transform 0.25s ease-out; z-index:9999; border-radius:2px; pointer-events:none;">toast</div>
+
+<div class="split">
+
+  <!-- LEFT HALF — simulation profile cards -->
+  <div class="col-left">
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <!-- RIGHT HALF — positional uncertainty profiles -->
+  <div class="col-right">
+    <div class="cards" id="pos-cards"></div>
+  </div>
+
+</div>
+
+<script>
+  // ============== real targets ==============
+  // sourced from the Al Jazeera "Iran's drone arsenal" infographic, 4 May 2026
+  // (only range_km and payload_kg are facts from that source — nothing else added)
+  const TARGETS = {
+    'Sh-149':     { label: 'Shahed-149',  range_km: 4000, payload_kg: 500 },
+    'Kaman-22':   { label: 'Kaman 22',    range_km: 3000, payload_kg: 300 },
+    'Sh-136':     { label: 'Shahed-136',  range_km: 2500, payload_kg: 50  },
+    'Mohajer-10': { label: 'Mohajer-10',  range_km: 2000, payload_kg: 300 },
+    'Sh-238':     { label: 'Shahed-238',  range_km: 2000, payload_kg: 50  },
+  };
+
+  // every classification slot can be either the target itself or its decoy version
+  // → dropdown shows 5 × 2 = 10 options
+  function classOptions() {
+    const out = [];
+    for (const [k, t] of Object.entries(TARGETS)) {
+      out.push({ value: k + '|real',  label: t.label });
+      out.push({ value: k + '|decoy', label: t.label + ' (decoy)' });
+    }
+    return out;
+  }
+
+  // color per base weapon. decoy variants share the color but render at lower opacity so
+  // the eye reads them as "same family, marked".
+  const WEAPON_COLORS = {
+    'Sh-149':     '#ef4444',
+    'Kaman-22':   '#f59e0b',
+    'Sh-136':     '#06b6d4',
+    'Mohajer-10': '#a855f7',
+    'Sh-238':     '#ec4899',
+  };
+  function pickColor(pickStr)   { const [k] = pickStr.split('|'); return WEAPON_COLORS[k] || '#8b919c'; }
+  function pickOpacity(pickStr) { return pickStr.endsWith('|decoy') ? 0.55 : 1; }
+  function pickLabel(pickStr) {
+    const [k, kind] = pickStr.split('|');
+    return (TARGETS[k]?.label || k) + (kind === 'decoy' ? ' dcy' : '');
+  }
+
+  // box-muller standard normal
+  function gauss() {
+    const u1 = 1 - Math.random();
+    const u2 = Math.random();
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  }
+
+  // ============== profiles ==============
+  // a profile is a numbered simulation scenario containing one or more weapons (classifications),
+  // each with its own probability. the variance slider controls how much those probabilities jitter
+  // between simulation runs.
+  function newProfile(num) {
+    return {
+      num,
+      variance_pct: 5,
+      classifications: [
+        { pick: 'Sh-136|real', prob: 100 },
+      ],
+    };
+  }
+  // seed IDs look like database rows — implying ~thousands of profiles in the system,
+  // not three demo entries
+  let profiles = [
+    {
+      num: 2847,
+      variance_pct: 5,
+      classifications: [
+        { pick: 'Sh-149|real',  prob: 65 },
+        { pick: 'Sh-136|real',  prob: 20 },
+        { pick: 'Sh-149|decoy', prob: 15 },
+      ],
+    },
+    {
+      num: 4951,
+      variance_pct: 5,
+      classifications: [
+        { pick: 'Sh-136|real',  prob: 80 },
+        { pick: 'Sh-136|decoy', prob: 20 },
+      ],
+    },
+  ];
+  let nextProfileNum = Math.max(...profiles.map(p => p.num)) + 1;
+
+  // ============== positional profiles (right column) ==============
+  // a positional profile bounds where the target actually is, given the sensor read:
+  //   radius_m   = 1σ uncertainty in the 2D ground plane (how off the x/y guess can be)
+  //   altitude_m = 1σ uncertainty in vertical (how off the altitude guess can be)
+  //   variance_pct = jitter applied to those two figures between simulation runs
+  let positionProfiles = [
+    { num: 5103, radius_m: 450, altitude_m: 200, variance_pct: 5 },
+  ];
+  let nextPosProfileNum = Math.max(...positionProfiles.map(p => p.num)) + 1;
+
+  // ============== visualization builders ==============
+  function classificationBarHtml(p) {
+    const segs = p.classifications.map(c =>
+      `<div style="width:${c.prob}%; background:${pickColor(c.pick)}; opacity:${pickOpacity(c.pick)};" title="${pickLabel(c.pick)}: ${c.prob}%"></div>`
+    ).join('');
+    const legend = p.classifications.map(c =>
+      `<span class="leg-item"><span class="leg-swatch" style="background:${pickColor(c.pick)}; opacity:${pickOpacity(c.pick)};"></span>${pickLabel(c.pick)} <span class="leg-pct mono">${c.prob}%</span></span>`
+    ).join('');
+    return `<div class="stack-bar">${segs}</div><div class="stack-legend">${legend}</div>`;
+  }
+
+  // weighted random pick from a vector of probabilities, returning the classification index.
+  // inverse-CDF over the supplied weights (which don't need to sum to 100 — we normalize).
+  function sampleIdx(weights) {
+    const total = weights.reduce((a, w) => a + Math.max(0, w), 0) || 1;
+    let r = Math.random() * total;
+    for (let i = 0; i < weights.length; i++) {
+      r -= Math.max(0, weights[i]);
+      if (r <= 0) return i;
+    }
+    return weights.length - 1;
+  }
+
+  // LEFT type-cloud: 100 simulated reads under one "simulation run" worth of jitter.
+  // variance_pct = 1σ jitter (in percentage points) applied to EACH weapon's probability
+  // ONCE per re-roll. With variance=0 the counts converge to configured ratios; with high
+  // variance, successive re-rolls swing visibly (the whole batch tilts toward one weapon
+  // or another). This is the standard "shared latent" noise model — one roll = one
+  // sensor-condition draw + 100 independent reads from it.
+  function typeCloudSvgHtml(p) {
+    const W = 280, H = 170;
+    // jitter each weapon's prob once per re-roll, clamp to ≥0, then sample 100 from that vector
+    const jittered = p.classifications.map(c => Math.max(0, c.prob + gauss() * p.variance_pct));
+    let dots = '';
+    for (let i = 0; i < 100; i++) {
+      const idx = sampleIdx(jittered);
+      const pick = p.classifications[idx].pick;
+      const x = 8 + Math.random() * (W - 16);
+      const y = 8 + Math.random() * (H - 24);
+      dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${pickColor(pick)}" opacity="${pickOpacity(pick).toFixed(2)}"/>`;
+    }
+    return `
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+        ${dots}
+        <text x="6" y="${H - 6}" font-family="JetBrains Mono, monospace" font-size="9" fill="#8b919c">100 reads · variance ±${p.variance_pct}pp · click to re-roll</text>
+      </svg>
+    `;
+  }
+
+  // RIGHT 3D scatter: render the (radius_m × radius_m × altitude_m) uncertainty volume as an
+  // ellipsoid wireframe (three orthogonal silhouette ellipses, isometric projection) with
+  // gaussian-sampled dots inside. depth cueing: dots behind the equator dim + shrink.
+  // scale is auto-fit per-card so the ellipsoid is always clearly visible — the shape conveys
+  // the radius/altitude ratio; absolute numbers are in the bottom label.
+  function scatter3dSvgHtml(p) {
+    const W = 280, H = 180;
+    const cx = W / 2, cy = H * 0.55;
+    const COS30 = Math.cos(Math.PI / 6), SIN30 = Math.sin(Math.PI / 6);
+
+    const rXY = Math.max(p.radius_m, 1);
+    const rZ  = Math.max(p.altitude_m, 1);
+
+    // bounding extents in screen space:
+    //   horizontal range = 4 * rXY * COS30
+    //   vertical range   = 2 * (rXY * SIN30 + rZ)
+    // fit each into ~85% of the canvas
+    const horizScale = (W - 30) / (4 * rXY * COS30);
+    const vertScale  = (H - 40) / (2 * (rXY * SIN30 + rZ));
+    const PX_PER_M = Math.min(horizScale, vertScale);
+
+    // isometric: x→east, y→north (into screen), z→up
+    function proj(x, y, z) {
+      const sx = cx + (x - y) * COS30 * PX_PER_M;
+      const sy = cy + (x + y) * SIN30 * PX_PER_M - z * PX_PER_M;
+      const depth = (x + y) * 0.5; // positive = behind
+      return { sx, sy, depth };
+    }
+
+    function ellipsePts(getPt) {
+      const pts = [];
+      for (let t = 0; t <= 80; t++) {
+        const a = (t / 80) * Math.PI * 2;
+        const { x, y, z } = getPt(a);
+        const { sx, sy } = proj(x, y, z);
+        pts.push(`${sx.toFixed(1)},${sy.toFixed(1)}`);
+      }
+      return pts.join(' ');
+    }
+
+    // ground disc — filled, so the ellipsoid has a visible "floor"
+    const groundPts = ellipsePts(a => ({ x: rXY * Math.cos(a), y: rXY * Math.sin(a), z: 0 }));
+    const yzPts     = ellipsePts(a => ({ x: 0,                  y: rXY * Math.cos(a), z: rZ * Math.sin(a) }));
+    const xzPts     = ellipsePts(a => ({ x: rXY * Math.cos(a), y: 0,                  z: rZ * Math.sin(a) }));
+
+    const ground = `<polygon points="${groundPts}" fill="#06b6d4" fill-opacity="0.10" stroke="#06b6d4" stroke-width="1.2" stroke-dasharray="4 2" opacity="0.95"/>`;
+    const yzRing = `<polygon points="${yzPts}"     fill="none"    stroke="#06b6d4" stroke-width="1.1" stroke-dasharray="4 2" opacity="0.85"/>`;
+    const xzRing = `<polygon points="${xzPts}"     fill="none"    stroke="#06b6d4" stroke-width="1.1" stroke-dasharray="4 2" opacity="0.85"/>`;
+
+    // axes — solid lines so x/y/z are easy to find
+    const ox = proj(0, 0, 0);
+    const ex = proj(rXY, 0, 0);
+    const ey = proj(0, rXY, 0);
+    const ez = proj(0, 0, rZ);
+    const axes = `
+      <line x1="${ox.sx}" y1="${ox.sy}" x2="${ex.sx}" y2="${ex.sy}" stroke="#4a525e" stroke-width="0.8"/>
+      <line x1="${ox.sx}" y1="${ox.sy}" x2="${ey.sx}" y2="${ey.sy}" stroke="#4a525e" stroke-width="0.8"/>
+      <line x1="${ox.sx}" y1="${ox.sy}" x2="${ez.sx}" y2="${ez.sy}" stroke="#4a525e" stroke-width="0.8"/>
+      <text x="${ex.sx + 4}" y="${ex.sy + 4}" font-family="JetBrains Mono, monospace" font-size="9" fill="#8b919c">x</text>
+      <text x="${ey.sx - 8}" y="${ey.sy + 4}" font-family="JetBrains Mono, monospace" font-size="9" fill="#8b919c">y</text>
+      <text x="${ez.sx + 4}" y="${ez.sy + 2}" font-family="JetBrains Mono, monospace" font-size="9" fill="#8b919c">z</text>
+    `;
+
+    // variance: each re-roll picks one jittered (effective) radius/altitude, then samples
+    // 100 dots from that. wireframe stays at the *configured* values — so when variance is
+    // high you'll see the cloud sometimes overflow the wireframe and sometimes shrink inside.
+    // jitter is a multiplicative factor: (1 + N(0, variance_pct/100))
+    const jitFactor = (1 + gauss() * (p.variance_pct / 100));
+    const effRXY = Math.max(1, rXY * jitFactor);
+    const altJitFactor = (1 + gauss() * (p.variance_pct / 100));
+    const effRZ = Math.max(1, rZ * altJitFactor);
+
+    // sample 100 dots, depth-sort back→front, depth-cue size/opacity
+    const samples = [];
+    for (let i = 0; i < 100; i++) {
+      const x = gauss() * effRXY;
+      const y = gauss() * effRXY;
+      const z = gauss() * effRZ;
+      samples.push(proj(x, y, z));
+    }
+    samples.sort((a, b) => b.depth - a.depth);
+    const dotsHtml = samples.map(s => {
+      const dShift = s.depth * PX_PER_M;
+      const r = Math.max(1.1, 2.2 - dShift / 50);
+      const op = Math.max(0.4, 0.9 - dShift / 120);
+      return `<circle cx="${s.sx.toFixed(1)}" cy="${s.sy.toFixed(1)}" r="${r.toFixed(2)}" fill="#22d3ee" opacity="${op.toFixed(2)}"/>`;
+    }).join('');
+
+    return `
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+        ${axes}
+        ${ground}
+        ${yzRing}
+        ${xzRing}
+        ${dotsHtml}
+        <text x="6" y="${H - 6}" font-family="JetBrains Mono, monospace" font-size="9" fill="#8b919c">cfg ±${p.radius_m}m × ±${p.altitude_m}m · this roll ±${Math.round(effRXY)}m × ±${Math.round(effRZ)}m · click to re-roll</text>
+      </svg>
+    `;
+  }
+
+  // ============== render ==============
+  function renderCard(p, idx) {
+    const sum = p.classifications.reduce((a, c) => a + c.prob, 0);
+    const sumColor = sum === 100 ? '#22c55e' : (sum > 100 ? '#ef4444' : '#f59e0b');
+    const opts = classOptions();
+
+    const rowsHtml = p.classifications.map((c, i) => `
+      <div class="cls-row">
+        <select data-idx="${idx}" data-row="${i}" class="cls-pick">
+          ${opts.map(o => `<option value="${o.value}" ${o.value === c.pick ? 'selected' : ''}>${o.label}</option>`).join('')}
+        </select>
+        <input type="range" min="0" max="100" step="1" value="${c.prob}" data-idx="${idx}" data-row="${i}" class="cls-prob-rng"/>
+        <span class="pct"><span class="cls-prob-read">${c.prob}</span><span class="u">%</span></span>
+        <span class="rm" data-idx="${idx}" data-row="${i}" title="remove">×</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="card" data-idx="${idx}">
+        <div class="card-head">
+          <div class="lhs">
+            <span class="big-num">#${p.num}</span>
+            <div class="title-block">
+              <span class="title">probabilistic profile</span>
+            </div>
+          </div>
+          <button class="del-profile text-[10px] mono text-muted hover:text-[#ef4444]" data-idx="${idx}">remove</button>
+        </div>
+
+        <div class="section">
+          <div class="label">
+            <span>Probability variance (1σ)</span>
+            <span class="v">±<span class="var-read">${p.variance_pct}</span> pp</span>
+          </div>
+          <div class="variance-row">
+            <input type="range" min="0" max="30" step="1" value="${p.variance_pct}" data-idx="${idx}" class="var-rng"/>
+            <span class="read">±<span class="var-read2">${p.variance_pct}</span><span class="u">%</span></span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label">
+            <span>Weapons in this profile</span>
+            <span class="v" style="color:${sumColor};"><span class="cls-sum-read">${sum}</span>%</span>
+          </div>
+          ${rowsHtml}
+          <div class="cls-foot">
+            <span class="sum text-secondary">sum: <span style="color:${sumColor};"><span class="cls-sum-read2">${sum}</span>%</span></span>
+            <button class="add" data-idx="${idx}" ${p.classifications.length >= classOptions().length ? 'disabled' : ''}>+ add weapon</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label"><span>Distribution</span></div>
+          <div class="bar-host">${classificationBarHtml(p)}</div>
+        </div>
+
+        <div class="section">
+          <div class="label"><span>Sample cloud</span><span class="v">100 simulated reads</span></div>
+          <div class="scatter-host" data-cloud-idx="${idx}">${typeCloudSvgHtml(p)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAddProfile() {
+    return `
+      <button id="add-profile" class="self-start px-3 py-2 border border-[#06b6d4] text-[#06b6d4] text-[11px] rounded-sm hover:bg-[#0a1a1f] mono">
+        + Add profile
+      </button>
+    `;
+  }
+
+  // ============== right column renderer ==============
+  function renderPosCard(p, idx) {
+    return `
+      <div class="card pos-card" data-pidx="${idx}">
+        <div class="card-head">
+          <div class="lhs">
+            <span class="big-num">#${p.num}</span>
+            <div class="title-block">
+              <span class="title">positional profile</span>
+            </div>
+          </div>
+          <button class="del-pos text-[10px] mono text-muted hover:text-[#ef4444]" data-pidx="${idx}">remove</button>
+        </div>
+
+        <div class="section">
+          <div class="label">
+            <span>2D position radius (1σ)</span>
+            <span class="v">±<span class="pos-rad-read">${p.radius_m}</span> m</span>
+          </div>
+          <div class="variance-row">
+            <input type="range" min="50" max="2500" step="10" value="${p.radius_m}" data-pidx="${idx}" class="pos-rad-rng"/>
+            <span class="read">±<span class="pos-rad-read2">${p.radius_m}</span><span class="u">m</span></span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label">
+            <span>Altitude uncertainty (1σ)</span>
+            <span class="v">±<span class="pos-alt-read">${p.altitude_m}</span> m</span>
+          </div>
+          <div class="variance-row">
+            <input type="range" min="0" max="1000" step="10" value="${p.altitude_m}" data-pidx="${idx}" class="pos-alt-rng"/>
+            <span class="read">±<span class="pos-alt-read2">${p.altitude_m}</span><span class="u">m</span></span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label">
+            <span>Variance (1σ jitter)</span>
+            <span class="v">±<span class="pos-var-read">${p.variance_pct}</span> pp</span>
+          </div>
+          <div class="variance-row">
+            <input type="range" min="0" max="30" step="1" value="${p.variance_pct}" data-pidx="${idx}" class="pos-var-rng"/>
+            <span class="read">±<span class="pos-var-read2">${p.variance_pct}</span><span class="u">%</span></span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="label"><span>Sample cloud (3D)</span><span class="v">100 samples</span></div>
+          <div class="scatter-host" data-pidx="${idx}">${scatter3dSvgHtml(p)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAddPosProfile() {
+    return `
+      <button id="add-pos-profile" class="self-start px-3 py-2 border border-[#06b6d4] text-[#06b6d4] text-[11px] rounded-sm hover:bg-[#0a1a1f] mono">
+        + Add profile
+      </button>
+    `;
+  }
+
+  function renderPos() {
+    document.getElementById('pos-cards').innerHTML = positionProfiles.map(renderPosCard).join('') + renderAddPosProfile();
+    wirePos();
+  }
+
+  function rerollScatter(idx) {
+    const card = document.querySelector(`.pos-card[data-pidx="${idx}"]`);
+    if (!card) return;
+    const host = card.querySelector('.scatter-host');
+    if (host) host.innerHTML = scatter3dSvgHtml(positionProfiles[idx]);
+  }
+
+  function wirePos() {
+    const bindRange = (cls, field, readSel) => {
+      document.querySelectorAll(cls).forEach(el => {
+        el.addEventListener('input', () => {
+          const idx = +el.dataset.pidx;
+          const v = parseInt(el.value, 10);
+          positionProfiles[idx][field] = v;
+          el.closest('.pos-card').querySelectorAll(readSel).forEach(e => e.textContent = v);
+          rerollScatter(idx);
+        });
+      });
+    };
+    bindRange('.pos-rad-rng', 'radius_m',     '.pos-rad-read, .pos-rad-read2');
+    bindRange('.pos-alt-rng', 'altitude_m',   '.pos-alt-read, .pos-alt-read2');
+    bindRange('.pos-var-rng', 'variance_pct', '.pos-var-read, .pos-var-read2');
+
+    document.querySelectorAll('.scatter-host').forEach(el => {
+      el.addEventListener('click', () => rerollScatter(+el.dataset.pidx));
+    });
+
+    document.querySelectorAll('.del-pos').forEach(el => {
+      el.addEventListener('click', () => {
+        positionProfiles.splice(+el.dataset.pidx, 1);
+        renderPos();
+      });
+    });
+
+    const addBtn = document.getElementById('add-pos-profile');
+    if (addBtn) addBtn.addEventListener('click', () => {
+      positionProfiles.push({ num: nextPosProfileNum++, radius_m: 450, altitude_m: 200, variance_pct: 5 });
+      renderPos();
+    });
+  }
+
+  function render() {
+    document.getElementById('cards').innerHTML = profiles.map(renderCard).join('') + renderAddProfile();
+    wire();
+    renderPos();
+  }
+
+  // light-touch updaters that don't re-render the whole card during slider drag
+  function updateVarianceDisplay(idx, val) {
+    const card = document.querySelector(`.card[data-idx="${idx}"]`);
+    if (!card) return;
+    card.querySelectorAll('.var-read, .var-read2').forEach(el => el.textContent = val);
+  }
+
+  // when one probability slider moves, others must absorb the change so the total stays 100%.
+  // distribute the remainder (100 - newValue) across other rows proportionally to their
+  // previous values; if all other rows were at 0, split equally; round once at the end so the
+  // sum is exactly 100.
+  function rebalance(profile, changedRow) {
+    const cls = profile.classifications;
+    const n = cls.length;
+    if (n === 1) { cls[0].prob = 100; return; }
+
+    const v = Math.max(0, Math.min(100, cls[changedRow].prob));
+    cls[changedRow].prob = v;
+    const remaining = 100 - v;
+    const others = cls.map((_, i) => i).filter(i => i !== changedRow);
+    const otherSum = others.reduce((a, i) => a + cls[i].prob, 0);
+
+    if (otherSum === 0) {
+      const each = remaining / others.length;
+      others.forEach(i => cls[i].prob = each);
+    } else {
+      others.forEach(i => { cls[i].prob = cls[i].prob * remaining / otherSum; });
+    }
+
+    // integer round, fix drift on the largest non-locked row
+    cls.forEach((c, i) => { if (i !== changedRow) c.prob = Math.round(c.prob); });
+    cls[changedRow].prob = Math.round(cls[changedRow].prob);
+    const diff = 100 - cls.reduce((a, c) => a + c.prob, 0);
+    if (diff !== 0) {
+      const target = others.reduce((best, i) => cls[i].prob > cls[best].prob ? i : best, others[0]);
+      cls[target].prob += diff;
+    }
+  }
+
+  function syncProbDom(idx) {
+    const card = document.querySelector(`.card[data-idx="${idx}"]`);
+    if (!card) return;
+    const rows = card.querySelectorAll('.cls-row');
+    profiles[idx].classifications.forEach((c, i) => {
+      const row = rows[i];
+      if (!row) return;
+      const rng = row.querySelector('.cls-prob-rng');
+      const read = row.querySelector('.cls-prob-read');
+      if (rng) rng.value = c.prob;
+      if (read) read.textContent = c.prob;
+    });
+    const sum = profiles[idx].classifications.reduce((a, c) => a + c.prob, 0);
+    const sumColor = sum === 100 ? '#22c55e' : (sum > 100 ? '#ef4444' : '#f59e0b');
+    card.querySelectorAll('.cls-sum-read, .cls-sum-read2').forEach(el => {
+      el.textContent = sum;
+      el.parentElement.style.color = sumColor;
+    });
+    // refresh the stacked-bar visualization in place (don't re-mount, lets the
+    // transition: width animation in .stack-bar > div smooth the change)
+    const barHost = card.querySelector('.bar-host');
+    if (barHost) barHost.innerHTML = classificationBarHtml(profiles[idx]);
+
+    // re-roll the type cloud so colors shift to track the new probabilities
+    const cloud = card.querySelector('.scatter-host[data-cloud-idx]');
+    if (cloud) cloud.innerHTML = typeCloudSvgHtml(profiles[idx]);
+  }
+
+  function wire() {
+    document.querySelectorAll('.var-rng').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = +el.dataset.idx;
+        profiles[idx].variance_pct = parseInt(el.value, 10);
+        updateVarianceDisplay(idx, profiles[idx].variance_pct);
+        // reroll the type cloud so the variance slider has a visible effect
+        const card = el.closest('.card');
+        const cloud = card?.querySelector('.scatter-host[data-cloud-idx]');
+        if (cloud) cloud.innerHTML = typeCloudSvgHtml(profiles[idx]);
+      });
+    });
+
+    document.querySelectorAll('.scatter-host[data-cloud-idx]').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = +el.dataset.cloudIdx;
+        el.innerHTML = typeCloudSvgHtml(profiles[idx]);
+      });
+    });
+
+    document.querySelectorAll('.cls-prob-rng').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = +el.dataset.idx;
+        const row = +el.dataset.row;
+        profiles[idx].classifications[row].prob = parseInt(el.value, 10);
+        rebalance(profiles[idx], row);
+        syncProbDom(idx);
+      });
+    });
+
+    document.querySelectorAll('.cls-pick').forEach(el => {
+      el.addEventListener('change', () => {
+        const idx = +el.dataset.idx;
+        const row = +el.dataset.row;
+        profiles[idx].classifications[row].pick = el.value;
+      });
+    });
+
+    document.querySelectorAll('.cls-row .rm').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = +el.dataset.idx;
+        const row = +el.dataset.row;
+        profiles[idx].classifications.splice(row, 1);
+        if (profiles[idx].classifications.length === 0) {
+          profiles[idx].classifications.push({ pick: 'Sh-136|real', prob: 100 });
+        } else {
+          // renormalize remaining rows to sum to 100
+          rebalance(profiles[idx], 0);
+        }
+        render();
+      });
+    });
+
+    document.querySelectorAll('.cls-foot .add').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = +el.dataset.idx;
+        const used = new Set(profiles[idx].classifications.map(c => c.pick));
+        const opts = classOptions();
+        const next = opts.find(o => !used.has(o.value)) || opts[0];
+        // new row takes 10% from the existing rows proportionally
+        profiles[idx].classifications.push({ pick: next.value, prob: 10 });
+        const newRow = profiles[idx].classifications.length - 1;
+        rebalance(profiles[idx], newRow);
+        render();
+      });
+    });
+
+    document.querySelectorAll('.del-profile').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = +el.dataset.idx;
+        profiles.splice(idx, 1);
+        render();
+      });
+    });
+
+    const addBtn = document.getElementById('add-profile');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        profiles.push(newProfile(nextProfileNum++));
+        render();
+      });
+    }
+  }
+
+  // ============== copy JSON ==============
+  function buildJson() {
+    return JSON.stringify({
+      version: 'v0.1',
+      generated: new Date().toISOString(),
+      source: 'weapon list: Al Jazeera — Iran\'s drone arsenal, 4 May 2026',
+      probabilistic_profiles: profiles.map(p => ({
+        profile: p.num,
+        probability_variance_pp: p.variance_pct,
+        weapons: p.classifications.map(c => {
+          const [key, kind] = c.pick.split('|');
+          const t = TARGETS[key];
+          return {
+            weapon: key,
+            label: t.label + (kind === 'decoy' ? ' (decoy)' : ''),
+            decoy: kind === 'decoy',
+            range_km: t.range_km,
+            payload_kg: t.payload_kg,
+            probability: c.prob / 100,
+          };
+        }),
+      })),
+      positional_profiles: positionProfiles.map(p => ({
+        profile: p.num,
+        position_radius_m_1sigma: p.radius_m,
+        altitude_m_1sigma: p.altitude_m,
+        variance_pp: p.variance_pct,
+      })),
+    }, null, 2);
+  }
+
+  function flashToast(msg) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.transform = 'translate(-50%, 0)';
+    clearTimeout(flashToast._t);
+    flashToast._t = setTimeout(() => { el.style.transform = 'translate(-50%, 120px)'; }, 1800);
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta); return ok;
+  }
+  function copyProfiles() {
+    const text = buildJson();
+    console.log(text);
+    const done = (ok) => flashToast(ok ? `profiles JSON copied · ${profiles.length} profile${profiles.length === 1 ? '' : 's'}` : 'clipboard blocked — see console (⌥⌘I)');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(fallbackCopy(text)));
+    } else { done(fallbackCopy(text)); }
+  }
+  document.getElementById('copy-profiles').addEventListener('click', copyProfiles);
+  window.addEventListener('keydown', (e) => {
+    const isE = e.code === 'KeyE' || (e.key && e.key.toLowerCase() === 'e');
+    if (isE && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault(); e.stopPropagation(); copyProfiles();
+    }
+  });
+
+  render();
+</script>
+
+</body>
+</html>

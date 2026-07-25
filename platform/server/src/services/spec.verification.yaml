@@ -1,0 +1,42 @@
+# sure: yes = public source; sure: no = guess
+# Values below are the canonical specs and match server/src/services/spec.ts 1:1.
+
+p1_sun_long:
+  display: P1-SUN Long (SkyFall)
+  engagement_range_km: { v: 33,   sure: yes }
+  alt_max_m:           { v: 8000, sure: yes }
+  spd_max_kmh:         { v: 450,  sure: yes }
+  cost_usd:            { v: 2500, sure: yes }
+
+sting:
+  display: Sting (Wild Hornets)
+  engagement_range_km: { v: 25,   sure: yes }
+  alt_max_m:           { v: 5000, sure: yes }
+  spd_max_kmh:         { v: 343,  sure: yes }
+  cost_usd:            { v: 2500, sure: yes }
+
+merops:
+  display: Merops (Perennial Autonomy, US)
+  engagement_range_km: { v: 15,    sure: yes }
+  alt_max_m:           { v: 4500,  sure: no  }
+  spd_max_kmh:         { v: 280,   sure: yes }
+  cost_usd:            { v: 6000, sure: yes }
+
+mfg:
+  display: Mobile Fire Group
+  engagement_range_km: { v: 2,    sure: yes }
+  alt_max_m:           { v: 1500, sure: yes }
+  spd_max_kmh:         { v: 300,  sure: yes  }
+  cost_usd:            { v: 0,    sure: yes  }
+
+shahed_136:
+  display: Shahed-136 / Geran-2 (piston)
+  spd_cruise_kmh: { v: 185,  sure: yes }
+  alt_cruise_m:   { v: 3000, sure: yes }
+  alt_terminal_m: { v: 100,  sure: yes }
+
+shahed_238_jet:
+  display: Shahed-238 / Geran-3/4/5 (jet)
+  spd_cruise_kmh: { v: 550,  sure: yes }
+  alt_cruise_m:   { v: 4000, sure: no  }
+  alt_terminal_m: { v: 100,  sure: no  }

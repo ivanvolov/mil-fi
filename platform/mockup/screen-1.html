@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"> teams
+<title>HOC — Tactical Map</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0a0d12; }
+  body { font-family: 'Inter', system-ui, sans-serif; color: #e7e9ea; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-feature-settings: "tnum" 1, "ss01" 1; }
+  .uppercase-label { text-transform: uppercase; letter-spacing: 0.08em; }
+  .panel { background: #0d1117; }
+  .border-line { border-color: #1f2630; }
+  .text-secondary { color: #8b919c; }
+  .text-muted { color: #4a525e; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 2px; font-size: 10px; line-height: 14px; }
+
+  #map { width: 100%; height: 100%; background: #0a0e14; }
+
+  .leaflet-control-zoom { border: 1px solid #1f2630 !important; }
+  .leaflet-control-zoom a { background: #0d1117 !important; color: #8b919c !important; border-color: #1f2630 !important; }
+  .leaflet-control-zoom a:hover { background: #1a2030 !important; color: #e7e9ea !important; }
+  .leaflet-container { font-family: inherit; background: #0a0e14 !important; }
+
+  /* mission select */
+  .mission-select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    background-color: #0d1117;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%238b919c' fill='none' stroke-width='1.2'/></svg>");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 10px 6px;
+    border: 1px solid #1f2630; color: #e7e9ea;
+    font-size: 12px; padding: 4px 26px 4px 10px;
+    border-radius: 2px; cursor: pointer; outline: none;
+  }
+  .mission-select:hover { border-color: #2a3340; }
+  .mission-select:focus { border-color: #06b6d4; }
+
+  /* asset markers — compact (default) */
+  .hoc-marker { background: transparent !important; border: none !important; }
+  .hoc-marker .marker-compact {
+    display: inline-flex; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    background: rgba(13,17,23,0.92); border: 1px solid #1f2630;
+    padding: 2px 6px; line-height: 1; white-space: nowrap; cursor: pointer;
+  }
+  .hoc-marker .marker-compact:hover { border-color: #2a3340; background: rgba(20,26,38,0.95); }
+  .hoc-marker .marker-compact .id {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: #e7e9ea;
+  }
+
+  /* selection ring stays on the compact pill — never expand the label */
+  .hoc-marker .marker-full { display: none; }
+  .hoc-marker.selected .marker-compact {
+    border-color: #06b6d4;
+    box-shadow: 0 0 8px rgba(6,182,212,0.55);
+  }
+
+  /* crew marker — compact + full */
+  .hoc-crew-marker { background: transparent !important; border: none !important; }
+  .hoc-crew-marker .crew-compact {
+    display: inline-flex; align-items: center; gap: 4px;
+    transform: translate(-50%, -50%);
+    background: rgba(13,17,23,0.92); border: 1px solid #06b6d4;
+    padding: 2px 6px; line-height: 1; white-space: nowrap; cursor: pointer;
+  }
+  .hoc-crew-marker .crew-compact .id {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: #06b6d4;
+  }
+  .hoc-crew-marker .crew-full { display: none; }
+  .hoc-crew-marker.selected .crew-compact {
+    box-shadow: 0 0 10px rgba(6,182,212,0.7);
+  }
+
+  .tes-tag { background: transparent !important; border: none !important; pointer-events: none; }
+  .tes-tag .body {
+    transform: translate(-50%, -50%);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #ef4444;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: rgba(13,17,23,0.85); padding: 3px 8px; border: 1px solid #ef4444;
+  }
+
+  /* left panel asset rows */
+  .asset-row {
+    display: grid; grid-template-columns: 18px 1fr auto; gap: 8px;
+    padding: 6px 10px; border-left: 2px solid transparent;
+    cursor: pointer; align-items: center;
+  }
+  .asset-row:hover { background: #131820; }
+  .asset-row.selected { background: #0e1a22; border-left-color: #06b6d4; }
+  .asset-row .glyph { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+  .asset-row .main { display: flex; flex-direction: column; min-width: 0; }
+  .asset-row .id { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #e7e9ea; }
+  .asset-row .sub { font-size: 10px; color: #8b919c; margin-top: 1px; }
+  .asset-row .state { font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+  .asset-row .state.ready { color: #22c55e; }
+  .asset-row .state.reload { color: #f59e0b; }
+
+  .accordion-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; cursor: pointer;
+    border-bottom: 1px solid #1f2630;
+    user-select: none;
+  }
+  .accordion-head .label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #8b919c; }
+  .accordion-head .count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #4a525e; }
+  .accordion-body.collapsed { display: none; }
+
+  .layer-btn { user-select: none; }
+  .layer-btn.off {
+    border-color: #1f2630 !important; color: #4a525e !important; background: transparent !important;
+  }
+
+  /* threat marker — just the icon, no text */
+  .hoc-threat-marker { background: transparent !important; border: none !important; }
+  .hoc-threat-marker .threat-compact {
+    transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; cursor: pointer;
+    border-radius: 50%;
+  }
+  .hoc-threat-marker.selected .threat-compact {
+    box-shadow: 0 0 0 2px #06b6d4, 0 0 10px rgba(6,182,212,0.6);
+  }
+
+  /* no-fly / no-engagement zone — solid brick line, hatched fill */
+  .no-fly-zone {
+    fill: url(#brick-hatch) !important;
+    fill-opacity: 1 !important;
+  }
+
+  /* edit-mode waypoint handle */
+  .hoc-edit-handle { background: transparent !important; border: none !important; }
+  .hoc-edit-handle .h {
+    transform: translate(-50%, -50%);
+    width: 13px; height: 13px;
+    border: 1.8px solid #06b6d4; background: #0d1117;
+    cursor: move;
+    box-shadow: 0 0 4px rgba(6,182,212,0.5);
+  }
+  .hoc-edit-handle.round .h { border-radius: 50%; }
+  .hoc-edit-handle.square .h { border-radius: 1px; }
+  .hoc-edit-handle.detonation .h { border-color: #ef4444; background: rgba(239,68,68,0.3); box-shadow: 0 0 4px rgba(239,68,68,0.5); }
+  .hoc-edit-handle.rect .h { border-color: #c2410c; background: rgba(194,65,12,0.3); box-shadow: 0 0 4px rgba(194,65,12,0.5); }
+
+  /* inspector mini-map */
+  #inspector-mini-map { height: 140px; width: 100%; background: #0a0e14; border-radius: 2px; }
+  #inspector-mini-map .leaflet-container { background: #0a0e14 !important; }
+</style>
+</head>
+<body>
+
+<div class="flex flex-col w-full h-full">
+
+  <!-- TOP STRIP -->
+  <header class="h-12 border-b border-line flex items-center gap-5 px-5 panel shrink-0">
+    <div class="text-lg font-bold tracking-[0.25em]">HOC</div>
+
+    <div class="flex items-center gap-2">
+      <span class="text-secondary uppercase-label text-[10px]">Mission</span>
+      <select class="mission-select mono">
+        <option>Burshtyn TES — Ivano-Frankivsk</option>
+      </select>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="flex items-center gap-1.5 text-xs">
+      <span class="text-secondary uppercase-label mr-2">Layers</span>
+      <button id="layer-threats" class="layer-btn px-3 py-1 rounded-sm border border-[#ef4444] text-[#ef4444] bg-[#1a0d11]">Threats</button>
+      <button id="layer-launchers" class="layer-btn px-3 py-1 rounded-sm border border-[#06b6d4] text-[#06b6d4] bg-[#0a1a1f]">Launchers</button>
+      <button id="layer-crews" class="layer-btn px-3 py-1 rounded-sm border border-[#06b6d4] text-[#06b6d4] bg-[#0a1a1f]">Crews</button>
+      <button id="layer-controls" class="layer-btn off px-3 py-1 rounded-sm border border-[#06b6d4] text-[#06b6d4] bg-[#0a1a1f]">Controls</button>
+      <button id="layer-edit" class="layer-btn px-3 py-1 rounded-sm border border-[#f59e0b] text-[#f59e0b] bg-[#1a130a]">Edit</button>
+    </div>
+
+    <button id="copy-positions" class="w-7 h-7 rounded-sm border border-line text-secondary hover:text-[#06b6d4] hover:border-[#06b6d4] flex items-center justify-center" title="copy all positions to clipboard (⌘⇧E or Ctrl+⇧E)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="1"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>
+    </button>
+
+    <button id="export-json" class="w-7 h-7 rounded-sm border border-line text-secondary hover:text-[#06b6d4] hover:border-[#06b6d4] flex items-center justify-center" title="export full layer as JSON file (escape hatch — roundtrip sanity for the redesign)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+    </button>
+
+    <div class="flex items-center gap-2 mono text-xs">
+      <span class="text-secondary uppercase-label">Center</span>
+      <span id="center-coords" class="text-[#e7e9ea]">49.2450 N · 24.6650 E</span>
+    </div>
+  </header>
+
+  <div id="toast" style="position:fixed; bottom:24px; left:50%; transform:translate(-50%, 120px); background:#0d1117; border:1px solid #06b6d4; color:#06b6d4; padding:8px 16px; font-family:'JetBrains Mono', monospace; font-size:12px; transition:transform 0.25s ease-out; z-index:9999; border-radius:2px; pointer-events:none;">toast</div>
+
+  <div class="flex-1 flex min-h-0">
+
+    <!-- LEFT LIST -->
+    <aside class="w-[240px] border-r border-line panel flex flex-col">
+
+      <div id="acc-threats">
+        <div class="accordion-head" data-target="threats-body">
+          <span class="label">▾ Threats</span>
+          <span class="count" id="count-threats">0</span>
+        </div>
+        <div class="accordion-body" id="threats-body"></div>
+      </div>
+
+      <div id="acc-crews">
+        <div class="accordion-head" data-target="crews-body">
+          <span class="label">▾ Crews</span>
+          <span class="count" id="count-crews">0</span>
+        </div>
+        <div class="accordion-body" id="crews-body"></div>
+      </div>
+
+      <div id="acc-launchers">
+        <div class="accordion-head" data-target="launchers-body">
+          <span class="label">▾ Launchers</span>
+          <span class="count" id="count-launchers">0</span>
+        </div>
+        <div class="accordion-body" id="launchers-body"></div>
+      </div>
+
+    </aside>
+
+    <!-- MAP -->
+    <main class="flex-1 relative min-w-0">
+      <div id="map"></div>
+    </main>
+
+    <!-- RIGHT INSPECTOR -->
+    <aside class="w-[324px] border-l border-line panel flex flex-col">
+      <div id="inspector" class="flex-1 flex flex-col overflow-y-auto"></div>
+    </aside>
+  </div>
+
+</div>
+
+<svg style="display:none">
+  <defs>
+    <symbol id="glyph-square" viewBox="0 0 20 20">
+      <rect x="2" y="2" width="16" height="16" fill="#0d1117" stroke="#e7e9ea" stroke-width="1.4"/>
+      <circle cx="10" cy="10" r="2.5" fill="#e7e9ea"/>
+    </symbol>
+    <symbol id="glyph-triangle" viewBox="0 0 20 20">
+      <path d="M 1 18 L 10 2 L 19 18 Z" fill="#0d1117" stroke="#e7e9ea" stroke-width="1.4"/>
+      <circle cx="10" cy="13" r="1.8" fill="#e7e9ea"/>
+    </symbol>
+    <symbol id="glyph-diamond" viewBox="0 0 20 20">
+      <path d="M 10 1 L 19 11 L 10 7 L 1 11 Z" fill="#0d1117" stroke="#e7e9ea" stroke-width="1.4"/>
+      <circle cx="10" cy="7" r="1.8" fill="#e7e9ea"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script>
+  // ============== DATA ==============
+  const launchers = [
+    { id: 'B-12', code: '41277521', type: 'interceptor', loadoutName: 'Sting (Wild Hornets)',
+      lat: 49.225389, lng: 24.622421, state: 'ready', ready: 6, reload: 2, capacity: 8,
+      site: 'Burshtyn TES · NW arc', operatorCrew: 'C1',
+      env: { range: 14, alt: 3000, maxSpd: 342, minSpd: 30 } },
+    { id: 'B-3', code: '43108432', type: 'interceptor', loadoutName: 'P1-SUN Long (SkyFall)',
+      lat: 49.232396, lng: 24.637442, state: 'ready', ready: 6, reload: 0, capacity: 6,
+      site: 'Burshtyn TES · N arc', operatorCrew: 'C1',
+      env: { range: 16, alt: 4000, maxSpd: 420, minSpd: 50 } },
+    { id: 'B-7', code: '30459217', type: 'interceptor', loadoutName: 'Merops',
+      lat: 49.226006, lng: 24.702759, state: 'reload', reloadETA: 22,
+      ready: 0, reload: 4, capacity: 4,
+      site: 'Burshtyn TES · NE arc · reload site', operatorCrew: 'C2',
+      env: { range: 15, alt: 4500, maxSpd: 280, minSpd: 40 } },
+    { id: 'B-5', code: '58912045', type: 'interceptor', loadoutName: 'F7 LITAVR',
+      lat: 49.222474, lng: 24.700098, state: 'ready', ready: 4, reload: 0, capacity: 4,
+      site: 'Burshtyn TES · E arc', operatorCrew: 'C2',
+      env: { range: 14, alt: 3000, maxSpd: 320, minSpd: 30 } },
+    { id: 'B-9', code: '49126733', type: 'interceptor', loadoutName: 'Sting (Wild Hornets)',
+      lat: 49.204701, lng: 24.687824, state: 'ready', ready: 6, reload: 0, capacity: 6,
+      site: 'Burshtyn TES · SE arc', operatorCrew: 'C2',
+      env: { range: 14, alt: 3000, maxSpd: 342, minSpd: 30 } },
+    { id: 'B-15', code: '71334821', type: 'interceptor', loadoutName: 'P1-SUN Long (SkyFall)',
+      lat: 49.208065, lng: 24.639931, state: 'ready', ready: 4, reload: 0, capacity: 4,
+      site: 'Burshtyn TES · SW arc', operatorCrew: 'C1',
+      env: { range: 16, alt: 4000, maxSpd: 420, minSpd: 50 } },
+    { id: 'MFG-2', code: '80231742', type: 'mfg', weapon: 'truck-mounted MG (PKT)',
+      lat: 49.232844, lng: 24.694347, state: 'ready', site: 'Burshtyn TES · NE close',
+      env: { range: 2, alt: 1500, maxSpd: 250, minSpd: 0 } },
+    { id: 'MFG-3', code: '80231983', type: 'mfg', weapon: 'ZU-23-2 (twin 23 mm)',
+      lat: 49.234525, lng: 24.622421, state: 'ready', site: 'Burshtyn TES · NW close',
+      env: { range: 2.5, alt: 1500, maxSpd: 300, minSpd: 0 } },
+    { id: 'MFG-4', code: '80232104', type: 'mfg', weapon: 'truck-mounted MG (PKT)',
+      lat: 49.197298, lng: 24.645596, state: 'ready', site: 'Burshtyn TES · SW close',
+      env: { range: 2, alt: 1500, maxSpd: 250, minSpd: 0 } },
+    { id: 'MFG-5', code: '80232515', type: 'mfg', weapon: 'ZU-23-2 (twin 23 mm)',
+      lat: 49.200551, lng: 24.682674, state: 'ready', site: 'Burshtyn TES · SE close',
+      env: { range: 2.5, alt: 1500, maxSpd: 300, minSpd: 0 } },
+    { id: 'M-1', code: '64204410', type: 'manpads', weapon: 'Stinger / Igla (interchangeable)',
+      lat: 49.205598, lng: 24.624996, state: 'ready', site: 'Burshtyn TES · SW perimeter post',
+      env: { range: 4, alt: 3500, maxSpd: 750, minSpd: 0 } },
+    { id: 'M-2', code: '64217820', type: 'manpads', weapon: 'Stinger / Igla (interchangeable)',
+      lat: 49.209748, lng: 24.697781, state: 'ready', site: 'Burshtyn TES · E post',
+      env: { range: 4, alt: 3500, maxSpd: 750, minSpd: 0 } },
+  ];
+
+  const crews = [
+    { id: 'C1', code: '11041208', lat: 49.232564, lng: 24.622421,
+      role: 'local · NW/SW group', controls: ['B-12', 'B-3', 'B-15', 'M-1'] },
+    { id: 'C2', code: '11075513', lat: 49.230490, lng: 24.694691,
+      role: 'local · NE/SE group · co-located with reload site (B-7)', controls: ['B-7', 'B-5', 'B-9', 'M-2'] },
+    { id: 'C3', code: '11099201', lat: 49.211990, lng: 24.661903,
+      role: 'elite · inside Burshtyn TES · can override any remote-controllable asset (skips truck-mounted MFGs — those have crews on the truck)',
+      controls: ['B-12', 'B-3', 'B-7', 'B-5', 'B-9', 'B-15', 'M-1', 'M-2'] },
+  ];
+
+  // ============== THREATS ==============
+  // T-1 = active intercept: past maneuvering path (yellow) + predicted cruise (yellow dashed) +
+  //       predicted attack/descent (red dashed) + detonation impact circle + orange divergence rect.
+  // T-2 = passing through south of sector — we choose NOT to engage, only a yellow line at the bottom.
+  const threats = [
+    { id: 'T-1', code: '99100201',
+      type: 'Shahed-136', family: 'piston',
+      altitude: 300, speed: 180, etaSec: 80,
+      intercept: true,
+      // current position == last point of pastPath
+      lat: 49.247750, lng: 24.670830,
+      // past flight path — 2 turns / 3 segments
+      pastPath: [
+        [49.265000, 24.770000],
+        [49.250000, 24.730000],
+        [49.265452, 24.726448],
+        [49.247750, 24.670830],
+      ],
+      // predicted cruise — dashed yellow
+      futureCruise: [[49.247750, 24.670830], [49.220849, 24.679585]],
+      // predicted attack / descent — dashed red
+      futureAttack:  [[49.220849, 24.679585], [49.206495, 24.667740]],
+      // detonation impact zone (red filled circle)
+      detLat: 49.206495, detLng: 24.667740, detRadius: 180,
+      // alternative trajectory zone — orange rectangle (could divert in here)
+      uncertaintyBounds: [[49.201560, 24.646797], [49.213672, 24.689541]],
+      targetName: 'Burshtyn TES · M-1',
+    },
+    { id: 'T-2', code: '99100202',
+      type: 'Shahed-136 (passing)', family: 'piston',
+      altitude: 280, speed: 175,
+      intercept: false,
+      // notional position somewhere along the line — used only by the left-panel jump
+      lat: 49.186, lng: 24.665,
+      // passing line — 3 turns / 4 segments across the bottom
+      passingLine: [
+        [49.186000, 24.580000],
+        [49.195391, 24.609203],
+        [49.178000, 24.651089],
+        [49.185967, 24.711342],
+        [49.186000, 24.760000],
+      ],
+      targetName: 'OUT OF SECTOR · NOT ASSIGNED',
+      note: 'Crosses south edge of sector below the engage perimeter — handed off to neighboring sector. No HOC assets committed.',
+    },
+  ];
+
+  let selection = { kind: 'launcher', id: 'B-12' };
+
+  // ============== MAP ==============
+  const map = L.map('map', {
+    zoomControl: false,
+    attributionControl: false,
+  }).setView([49.216195, 24.663363], 13);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // ============== DEFENSE PERIMETER — 5.25 km, GREEN, shifted north ==============
+  // we engage anything inside this; outside is not our problem
+  L.circle([49.225, 24.66144471561434], {
+    radius: 5250,
+    color: '#22c55e', weight: 1.5, dashArray: '6 4',
+    fillColor: '#22c55e', fillOpacity: 0.03,
+    interactive: false,
+  }).addTo(map);
+
+  const launcherLayer = L.layerGroup().addTo(map);
+  const crewLayer = L.layerGroup().addTo(map);
+  const controlsLayer = L.layerGroup(); // off by default — toggle via top-bar button
+  const threatsLayer = L.layerGroup().addTo(map);
+
+  // ============== NO-FLY ZONE — solid brick line, hatched fill, lives in launcherLayer ==============
+  // Re-added inside renderMapMarkers() because launcherLayer.clearLayers() wipes it each render.
+  const NO_FLY_COORDS = [
+    [49.223150351990014, 24.649086460795434],
+    [49.207979824354986, 24.675129154922917],
+    [49.201550414665746, 24.67352804418505],
+    [49.22314414076817, 24.63816701693119],
+  ];
+  function addNoFlyZone() {
+    L.polygon(NO_FLY_COORDS, {
+      color: '#b04a3a', weight: 2,
+      fillColor: '#b04a3a', fillOpacity: 1,
+      className: 'no-fly-zone',
+      interactive: false,
+    }).addTo(launcherLayer);
+  }
+
+  // Inject the brick-dot pattern into Leaflet's own overlay SVG so that
+  // CSS `fill: url(#brick-hatch)` resolves inside the same document
+  // (cross-SVG url() references don't resolve in browsers).
+  function ensureBrickPattern() {
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const overlaySvg = document.querySelector('.leaflet-overlay-pane svg');
+    if (!overlaySvg) return;
+    if (overlaySvg.querySelector('#brick-hatch')) return;
+    let defs = overlaySvg.querySelector('defs');
+    if (!defs) {
+      defs = document.createElementNS(SVG_NS, 'defs');
+      overlaySvg.insertBefore(defs, overlaySvg.firstChild);
+    }
+    const pattern = document.createElementNS(SVG_NS, 'pattern');
+    pattern.setAttribute('id', 'brick-hatch');
+    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+    pattern.setAttribute('width', '5');
+    pattern.setAttribute('height', '5');
+    const dot = document.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('cx', '2.5');
+    dot.setAttribute('cy', '2.5');
+    dot.setAttribute('r', '0.55');
+    dot.setAttribute('fill', '#b04a3a');
+    dot.setAttribute('fill-opacity', '0.85');
+    pattern.appendChild(dot);
+    defs.appendChild(pattern);
+  }
+
+  // ============== MARKER FACTORIES ==============
+  function glyphHtml(type, size = 20) {
+    if (type === 'interceptor') return `<svg width="${size}" height="${size}"><use href="#glyph-square"/></svg>`;
+    if (type === 'mfg') return `<svg width="${size}" height="${size}"><use href="#glyph-triangle"/></svg>`;
+    if (type === 'manpads') return `<svg width="${size}" height="${size}"><use href="#glyph-diamond"/></svg>`;
+    return '';
+  }
+
+  function stateText(l) {
+    if (l.type === 'interceptor') {
+      if (l.state === 'reload') return `RELOAD · ${l.reloadETA}s`;
+      return `READY · ${l.ready}/${l.capacity}`;
+    }
+    return l.state === 'reload' ? 'RELOAD' : 'READY';
+  }
+
+  function typeSubtitle(l) {
+    if (l.type === 'interceptor') return l.loadoutName.split(' ')[0];
+    if (l.type === 'mfg') return l.weapon.split('(')[0].trim();
+    if (l.type === 'manpads') return 'MANPADS';
+    return '';
+  }
+
+  function launcherMarker(l, isSelected) {
+    const compactHtml = `
+      <div class="marker-compact" data-id="${l.id}">
+        ${glyphHtml(l.type, 12)}
+        <span class="id">${l.id}</span>
+      </div>`;
+    const fullHtml = `
+      <div class="marker-full" data-id="${l.id}">
+        <div class="marker-glyph">${glyphHtml(l.type, 20)}</div>
+        <div class="marker-label">
+          <div class="id">${l.id}</div>
+          <div class="sub">${typeSubtitle(l)}</div>
+          <div class="state ${l.state}">${stateText(l)}</div>
+        </div>
+      </div>`;
+    const icon = L.divIcon({
+      className: 'hoc-marker' + (isSelected ? ' selected' : ''),
+      html: compactHtml + fullHtml,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    });
+    const m = L.marker([l.lat, l.lng], { icon, draggable: true });
+    m.on('click', () => select('launcher', l.id, false));
+    m.on('dragend', (e) => {
+      const pos = e.target.getLatLng();
+      l.lat = pos.lat;
+      l.lng = pos.lng;
+      renderMapMarkers();
+      if (selection.kind === 'launcher' && selection.id === l.id) renderInspector();
+    });
+    return m;
+  }
+
+  function threatGlyphHtml() {
+    // small red triangle pointing up; rotated by the marker if heading is known
+    return `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#ef4444" stroke="#ef4444" stroke-width="1"/></svg>`;
+  }
+
+  function threatMarker(t, isSelected) {
+    const compactHtml = `<div class="threat-compact" data-id="${t.id}">${threatGlyphHtml()}</div>`;
+    const icon = L.divIcon({
+      className: 'hoc-threat-marker' + (isSelected ? ' selected' : ''),
+      html: compactHtml,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    });
+    const m = L.marker([t.lat, t.lng], { icon, draggable: true });
+    m.on('click', () => select('threat', t.id, false));
+    m.on('dragend', (e) => {
+      const pos = e.target.getLatLng();
+      t.lat = pos.lat;
+      t.lng = pos.lng;
+      // keep the last point of pastPath in sync with the current threat position
+      if (t.pastPath && t.pastPath.length) {
+        t.pastPath[t.pastPath.length - 1] = [pos.lat, pos.lng];
+      }
+      renderMapMarkers();
+      if (selection.kind === 'threat' && selection.id === t.id) renderInspector();
+    });
+    return m;
+  }
+
+  // ============== EDIT-MODE HANDLES ==============
+  let editMode = true;
+
+  function editHandle(latlng, kind, onDrag) {
+    const icon = L.divIcon({
+      className: 'hoc-edit-handle ' + kind,
+      html: `<div class="h"></div>`,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    });
+    const m = L.marker(latlng, { icon, draggable: true, autoPan: false });
+    m.on('drag', (e) => {
+      onDrag(e.target.getLatLng());
+      redrawThreatGeometry();          // live-update all lines/circle/rect as the user drags
+    });
+    m.on('dragend', () => { renderMapMarkers(); renderInspector(); });
+    return m;
+  }
+
+  function renderEditHandles() {
+    if (!editMode) return;
+    threats.forEach(t => {
+      if (t.intercept === false) {
+        // T-2 passingLine — every point is a draggable handle
+        t.passingLine.forEach((pt, idx) => {
+          editHandle(pt, 'round', (ll) => {
+            t.passingLine[idx] = [ll.lat, ll.lng];
+          }).addTo(threatsLayer);
+        });
+        return;
+      }
+      // T-1 pastPath — every waypoint; last one also drives the threat position and the cruise start
+      t.pastPath.forEach((pt, idx) => {
+        editHandle(pt, 'round', (ll) => {
+          t.pastPath[idx] = [ll.lat, ll.lng];
+          if (idx === t.pastPath.length - 1) {
+            t.lat = ll.lat; t.lng = ll.lng;
+            t.futureCruise[0] = [ll.lat, ll.lng];
+          }
+        }).addTo(threatsLayer);
+      });
+      // cruise — only the END is editable (its start is the threat position handle above)
+      const cruiseEndIdx = t.futureCruise.length - 1;
+      editHandle(t.futureCruise[cruiseEndIdx], 'round', (ll) => {
+        t.futureCruise[cruiseEndIdx] = [ll.lat, ll.lng];
+        t.futureAttack[0] = [ll.lat, ll.lng];
+      }).addTo(threatsLayer);
+      // detonation point — drives attack end + detonation circle
+      editHandle([t.detLat, t.detLng], 'detonation round', (ll) => {
+        t.detLat = ll.lat; t.detLng = ll.lng;
+        t.futureAttack[t.futureAttack.length - 1] = [ll.lat, ll.lng];
+      }).addTo(threatsLayer);
+      // divergence rectangle corners (SW, NE)
+      editHandle(t.uncertaintyBounds[0], 'rect square', (ll) => {
+        t.uncertaintyBounds[0] = [ll.lat, ll.lng];
+      }).addTo(threatsLayer);
+      editHandle(t.uncertaintyBounds[1], 'rect square', (ll) => {
+        t.uncertaintyBounds[1] = [ll.lat, ll.lng];
+      }).addTo(threatsLayer);
+    });
+  }
+
+  function crewMarker(c, isSelected) {
+    const compactHtml = `
+      <div class="crew-compact" data-id="${c.id}">
+        <span class="id">${c.id}</span>
+      </div>`;
+    const fullHtml = `
+      <div class="crew-full" data-id="${c.id}">
+        <div class="crew-glyph">${c.id}</div>
+        <div class="crew-label">
+          <div class="id">${c.id}</div>
+          <div class="sub">${c.controls.length} launcher${c.controls.length === 1 ? '' : 's'}</div>
+        </div>
+      </div>`;
+    const icon = L.divIcon({
+      className: 'hoc-crew-marker' + (isSelected ? ' selected' : ''),
+      html: compactHtml + fullHtml,
+      iconSize: [0, 0], iconAnchor: [0, 0],
+    });
+    const m = L.marker([c.lat, c.lng], { icon, draggable: true });
+    m.on('click', () => select('crew', c.id, false));
+    m.on('dragend', (e) => {
+      const pos = e.target.getLatLng();
+      c.lat = pos.lat;
+      c.lng = pos.lng;
+      renderMapMarkers();
+      if (selection.kind === 'crew' && selection.id === c.id) renderInspector();
+    });
+    return m;
+  }
+
+  // ============== RENDER ==============
+  function drawThreatGeometry(t) {
+    if (t.intercept === false) {
+      L.polyline(t.passingLine, {
+        color: '#eab308', weight: 2.6, opacity: 0.7, interactive: false,
+      }).addTo(threatsLayer);
+      return;
+    }
+    L.polyline(t.pastPath, {
+      color: '#eab308', weight: 2, opacity: 0.9, interactive: false,
+    }).addTo(threatsLayer);
+    L.polyline(t.futureCruise, {
+      color: '#eab308', weight: 2, opacity: 0.75, dashArray: '5 4', interactive: false,
+    }).addTo(threatsLayer);
+    L.polyline(t.futureAttack, {
+      color: '#ef4444', weight: 2.5, opacity: 0.9, dashArray: '5 4', interactive: false,
+    }).addTo(threatsLayer);
+    L.rectangle(t.uncertaintyBounds, {
+      color: '#c2410c', weight: 1.4,
+      fillColor: '#c2410c', fillOpacity: 0.05, interactive: false,
+    }).addTo(threatsLayer);
+    L.circle([t.detLat, t.detLng], {
+      radius: t.detRadius,
+      color: '#ef4444', weight: 1.5,
+      fillColor: '#ef4444', fillOpacity: 0.22, interactive: false,
+    }).addTo(threatsLayer);
+  }
+
+  function redrawThreatGeometry() {
+    // strip path-based shapes (polyline, polygon, rect, circle) and re-add — keeps markers/handles intact
+    const toRemove = [];
+    threatsLayer.eachLayer(layer => { if (layer instanceof L.Path) toRemove.push(layer); });
+    toRemove.forEach(layer => threatsLayer.removeLayer(layer));
+    threats.forEach(drawThreatGeometry);
+  }
+
+  function renderMapMarkers() {
+    launcherLayer.clearLayers();
+    crewLayer.clearLayers();
+    controlsLayer.clearLayers();
+    threatsLayer.clearLayers();
+
+    addNoFlyZone();
+    ensureBrickPattern();
+
+    threats.forEach(t => {
+      const sel = selection.kind === 'threat' && selection.id === t.id;
+      drawThreatGeometry(t);
+      if (t.intercept !== false) threatMarker(t, sel).addTo(threatsLayer);
+    });
+
+    // edit-mode draggable handles for trajectory + detonation + divergence rectangle
+    renderEditHandles();
+
+    launchers.forEach(l => {
+      const sel = selection.kind === 'launcher' && selection.id === l.id;
+      launcherMarker(l, sel).addTo(launcherLayer);
+    });
+
+    crews.forEach(c => {
+      const sel = selection.kind === 'crew' && selection.id === c.id;
+      crewMarker(c, sel).addTo(crewLayer);
+
+      const isElite = (c.role || '').startsWith('elite');
+      c.controls.forEach(launcherId => {
+        const l = launchers.find(x => x.id === launcherId);
+        if (!l) return;
+        const lineOpts = {
+          color: '#06b6d4',
+          weight: isElite ? 1 : 1.5,
+          opacity: isElite ? 0.55 : 0.9,
+          dashArray: isElite ? '4 4' : null,
+        };
+        // every line goes into controlsLayer (visible only when Controls toggle is on)
+        L.polyline([[c.lat, c.lng], [l.lat, l.lng]], lineOpts).addTo(controlsLayer);
+        // the selected crew's lines ALSO go into crewLayer so they show regardless of the Controls toggle
+        if (sel) {
+          L.polyline([[c.lat, c.lng], [l.lat, l.lng]], lineOpts).addTo(crewLayer);
+        }
+      });
+    });
+  }
+
+  function haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  function renderPalette() {
+    const tbody = document.getElementById('threats-body');
+    tbody.innerHTML = threats.map(t => {
+      const selected = selection.kind === 'threat' && selection.id === t.id;
+      const isPass = t.intercept === false;
+      const accent = isPass ? '#eab308' : '#ef4444';
+      const rightLabel = isPass ? 'NO ENG' : `${t.speed} km/h`;
+      return `
+        <div class="asset-row ${selected ? 'selected' : ''}" data-kind="threat" data-id="${t.id}">
+          <div class="glyph">${isPass
+            ? `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#eab308" stroke="#eab308"/></svg>`
+            : threatGlyphHtml()}</div>
+          <div class="main">
+            <span class="id" style="color:${accent}">${t.id}</span>
+            <div class="sub">${t.type} · ${t.altitude} m</div>
+          </div>
+          <div class="state" style="color:${accent}">${rightLabel}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('count-threats').textContent = threats.length;
+
+    const body = document.getElementById('launchers-body');
+    body.innerHTML = launchers.map(l => {
+      const selected = selection.kind === 'launcher' && selection.id === l.id;
+      const stateCls = l.state === 'reload' ? 'reload' : 'ready';
+      const stateLabel = l.type === 'interceptor'
+        ? (l.state === 'reload' ? 'RELOAD' : `${l.ready}/${l.capacity}`)
+        : 'READY';
+      return `
+        <div class="asset-row ${selected ? 'selected' : ''}" data-kind="launcher" data-id="${l.id}">
+          <div class="glyph">${glyphHtml(l.type, 18)}</div>
+          <div class="main">
+            <span class="id">${l.id}</span>
+            <div class="sub">${typeSubtitle(l)}</div>
+          </div>
+          <div class="state ${stateCls}">${stateLabel}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('count-launchers').textContent = launchers.length;
+
+    const cbody = document.getElementById('crews-body');
+    cbody.innerHTML = crews.map(c => {
+      const selected = selection.kind === 'crew' && selection.id === c.id;
+      return `
+        <div class="asset-row ${selected ? 'selected' : ''}" data-kind="crew" data-id="${c.id}">
+          <div class="glyph"><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="7" fill="#0d1117" stroke="#06b6d4" stroke-width="1.4"/></svg></div>
+          <div class="main">
+            <span class="id">${c.id}</span>
+            <div class="sub">${c.controls.length} launcher${c.controls.length === 1 ? '' : 's'}</div>
+          </div>
+        </div>`;
+    }).join('');
+    document.getElementById('count-crews').textContent = crews.length;
+
+    document.querySelectorAll('.asset-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const kind = row.getAttribute('data-kind');
+        const id = row.getAttribute('data-id');
+        select(kind, id, true);
+      });
+    });
+  }
+
+  function explainType(type) {
+    if (type === 'interceptor') return `Unmanned launch container of interceptor drones. The box itself has no operator on site — an Operator Crew pilots each drone remotely over a control link.`;
+    if (type === 'mfg') return `Mobile Fire Group — a truck with a mounted gun and a crew of 2–3 on the same vehicle. Self-contained: gun, ammunition, operators and vehicle all in one place, no remote control.`;
+    if (type === 'manpads') return `Man-Portable Air Defense System. A shoulder-fired infrared-guided missile (Stinger / Igla class) carried and fired by one soldier. Hits aircraft and low-altitude drones up to about 4 km.`;
+    return '';
+  }
+
+  function stateChip(l) {
+    if (l.state === 'reload') return `<span class="chip border border-[#f59e0b] text-[#f59e0b]">RELOAD · ${l.reloadETA}s</span>`;
+    return `<span class="chip border border-[#22c55e] text-[#22c55e]">READY</span>`;
+  }
+
+  function renderInspectorContainer(headerHtml, bodyHtml, footerHtml) {
+    return `
+      ${headerHtml}
+      ${bodyHtml}
+      ${footerHtml || '<div class="flex-1"></div>'}
+    `;
+  }
+
+  function renderLauncherInspector(l) {
+    const typeTitle = l.type === 'interceptor' ? 'Interceptor Launcher' : (l.type === 'mfg' ? 'Mobile Fire Group' : 'MANPADS');
+    const loadoutRow = l.type === 'interceptor'
+      ? `<div class="text-secondary">Loadout</div><div>${l.loadoutName}</div>`
+      : `<div class="text-secondary">Weapon</div><div>${l.weapon}</div>`;
+    const operatorRow = l.type === 'interceptor'
+      ? `<div class="text-secondary">Operator</div><div><span class="chip border border-[#06b6d4] text-[#06b6d4] crew-jump" data-crew="${l.operatorCrew}">${l.operatorCrew}</span> · remote</div>`
+      : (l.type === 'mfg'
+          ? `<div class="text-secondary">Operator</div><div>Manned (3 on truck)</div>`
+          : `<div class="text-secondary">Operator</div><div>Manned (1 soldier)</div>`);
+
+    const loadoutBlock = l.type === 'interceptor' ? `
+      <div class="px-4 py-3 border-b border-line">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Loadout</div>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+          <div class="border border-line rounded-sm p-2 text-center">
+            <div class="mono text-xl text-[#22c55e]">${l.ready}</div>
+            <div class="text-[10px] text-secondary uppercase-label">ready</div>
+          </div>
+          <div class="border border-line rounded-sm p-2 text-center">
+            <div class="mono text-xl text-[#f59e0b]">${l.reload}</div>
+            <div class="text-[10px] text-secondary uppercase-label">reload</div>
+          </div>
+          <div class="border border-line rounded-sm p-2 text-center">
+            <div class="mono text-xl text-secondary">${l.capacity}</div>
+            <div class="text-[10px] text-secondary uppercase-label">capacity</div>
+          </div>
+        </div>
+        ${l.state === 'reload' ? `<div class="mono text-[10px] text-secondary">reload ETA: ${l.reloadETA}s · resupply: tomorrow 06:00</div>` : ''}
+      </div>` : '';
+
+    const headerHtml = `
+      <div class="px-4 py-3 border-b border-line flex items-start justify-between">
+        <div>
+          <div class="text-[10px] text-secondary uppercase-label">${typeTitle}</div>
+          <div class="text-2xl font-bold mono mt-1">${l.id}</div>
+          <div class="text-[10px] text-muted mt-1 mono">battlefield-wide code · ${l.code}</div>
+        </div>
+        <div class="text-right pt-1">${stateChip(l)}</div>
+      </div>`;
+
+    const bodyHtml = `
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="grid grid-cols-2 gap-y-1.5 gap-x-3">
+          <div class="text-secondary">Type</div><div>${typeTitle}</div>
+          ${loadoutRow}
+          ${operatorRow}
+          <div class="text-secondary">Position</div><div class="mono">${l.lat.toFixed(3)} N · ${l.lng.toFixed(3)} E</div>
+          <div class="text-secondary">Site</div><div>${l.site}</div>
+        </div>
+      </div>
+
+      ${loadoutBlock}
+
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Envelope</div>
+        <div class="grid grid-cols-2 gap-y-1.5 gap-x-3">
+          <div class="text-secondary">Range</div><div class="mono">${l.env.range} km</div>
+          <div class="text-secondary">Max alt</div><div class="mono">${l.env.alt.toLocaleString()} m</div>
+          <div class="text-secondary">Max tgt speed</div><div class="mono">${l.env.maxSpd} km/h</div>
+          <div class="text-secondary">Min tgt speed</div><div class="mono">${l.env.minSpd} km/h</div>
+        </div>
+      </div>
+
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Constraints</div>
+        <div class="flex gap-1.5 flex-wrap">
+          <span class="chip border border-[#22c55e]/40 text-[#22c55e]">Wind 4 m/s · OK</span>
+          <span class="chip border border-[#22c55e]/40 text-[#22c55e]">Vis 8 km · OK</span>
+          <span class="chip border border-[#f59e0b]/40 text-[#f59e0b]">Mist</span>
+        </div>
+      </div>`;
+
+    return renderInspectorContainer(headerHtml, bodyHtml);
+  }
+
+  function renderCrewInspector(c) {
+    const controlled = c.controls.map(id => launchers.find(x => x.id === id)).filter(Boolean);
+
+    const headerHtml = `
+      <div class="px-4 py-3 border-b border-line flex items-start justify-between">
+        <div>
+          <div class="text-[10px] text-secondary uppercase-label">Operator Crew</div>
+          <div class="text-2xl font-bold mono text-[#06b6d4] mt-1">${c.id}</div>
+          <div class="text-[10px] text-muted mt-1 mono">battlefield-wide code · ${c.code}</div>
+        </div>
+        <div class="text-right pt-1">
+          <span class="chip border border-[#06b6d4] text-[#06b6d4]">${c.controls.length} launcher${c.controls.length === 1 ? '' : 's'}</span>
+        </div>
+      </div>`;
+
+    const bodyHtml = `
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="grid grid-cols-2 gap-y-1.5 gap-x-3">
+          <div class="text-secondary">Position</div><div class="mono">${c.lat.toFixed(3)} N · ${c.lng.toFixed(3)} E</div>
+        </div>
+      </div>
+
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Controls</div>
+        <div class="space-y-1.5">
+          ${controlled.map(l => {
+            const d = haversine(c.lat, c.lng, l.lat, l.lng);
+            const remote = d > 8;
+            return `
+              <div class="border border-line rounded-sm px-2.5 py-1.5 flex items-center justify-between cursor-pointer launcher-jump" data-id="${l.id}">
+                <div>
+                  <div class="mono text-sm">${l.id}</div>
+                  <div class="text-[10px] text-secondary">${typeSubtitle(l)}</div>
+                </div>
+                <div class="text-right">
+                  <div class="mono text-[10px] ${remote ? 'text-[#f59e0b]' : 'text-[#22c55e]'}">${d.toFixed(1)} km · ${remote ? 'remote' : 'local'}</div>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+
+    return renderInspectorContainer(headerHtml, bodyHtml);
+  }
+
+  function renderInspector() {
+    const el = document.getElementById('inspector');
+    if (!selection || !selection.kind) {
+      el.innerHTML = `
+        <div class="flex-1 flex items-center justify-center p-6 text-center">
+          <div>
+            <div class="text-secondary text-sm mb-1">No asset selected</div>
+            <div class="text-[10px] text-muted">click any marker on the map or any row in the list</div>
+          </div>
+        </div>`;
+      return;
+    }
+    if (selection.kind === 'launcher') {
+      const l = launchers.find(x => x.id === selection.id);
+      el.innerHTML = renderLauncherInspector(l);
+    } else if (selection.kind === 'threat') {
+      const t = threats.find(x => x.id === selection.id);
+      el.innerHTML = renderThreatInspector(t);
+    } else {
+      const c = crews.find(x => x.id === selection.id);
+      el.innerHTML = renderCrewInspector(c);
+    }
+    wireInspectorJumps();
+  }
+
+  function renderThreatInspector(t) {
+    // ----- passing-through threat: not intercepting -----
+    if (t.intercept === false) {
+      return `
+        <div class="px-4 py-3 border-b border-line flex items-start justify-between">
+          <div>
+            <div class="text-[10px] uppercase-label" style="color:#eab308">Passing Threat</div>
+            <div class="text-2xl font-bold mono mt-1" style="color:#eab308">${t.id}</div>
+            <div class="text-[10px] text-muted mt-1 mono">battlefield-wide code · ${t.code}</div>
+          </div>
+          <div class="text-right pt-1">
+            <span class="chip border" style="border-color:#eab308;color:#eab308">NO ENG</span>
+          </div>
+        </div>
+        <div class="px-4 py-3 border-b border-line text-xs">
+          <div class="grid grid-cols-2 gap-y-1.5 gap-x-3">
+            <div class="text-secondary">Type</div><div>${t.type}</div>
+            <div class="text-secondary">Altitude</div><div class="mono">${t.altitude} m</div>
+            <div class="text-secondary">Speed</div><div class="mono">${t.speed} km/h</div>
+            <div class="text-secondary">Status</div><div>${t.targetName}</div>
+          </div>
+        </div>
+        <div class="px-4 py-3 border-b border-line text-xs">
+          <div class="text-[10px] text-secondary uppercase-label mb-2">Decision</div>
+          <div class="text-secondary leading-snug">${t.note}</div>
+        </div>`;
+    }
+
+    // ----- active intercept: detailed trajectory inspector -----
+    const altBand = t.altitude < 500 ? 'LOW' : (t.altitude < 2000 ? 'MID' : 'HIGH');
+    const altColor = t.altitude < 500 ? '#22c55e' : (t.altitude < 2000 ? '#f59e0b' : '#ef4444');
+    return `
+      <div class="px-4 py-3 border-b border-line flex items-start justify-between">
+        <div>
+          <div class="text-[10px] uppercase-label" style="color:#ef4444">Inbound Threat</div>
+          <div class="text-2xl font-bold mono mt-1" style="color:#ef4444">${t.id}</div>
+          <div class="text-[10px] text-muted mt-1 mono">battlefield-wide code · ${t.code}</div>
+        </div>
+        <div class="text-right pt-1">
+          <span class="chip border" style="border-color:${altColor};color:${altColor}">${altBand} ALT</span>
+        </div>
+      </div>
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="grid grid-cols-2 gap-y-1.5 gap-x-3">
+          <div class="text-secondary">Type</div><div>${t.type} <span class="text-secondary">(${t.family})</span></div>
+          <div class="text-secondary">Altitude</div><div class="mono">${t.altitude.toLocaleString()} m</div>
+          <div class="text-secondary">Speed</div><div class="mono">${t.speed} km/h</div>
+          <div class="text-secondary">Target</div><div>${t.targetName}</div>
+          <div class="text-secondary">ETA</div><div class="mono">${Math.floor(t.etaSec/60)}:${String(t.etaSec%60).padStart(2,'0')}</div>
+        </div>
+      </div>
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Trajectory legend</div>
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span style="display:inline-block;width:24px;height:2px;background:#eab308"></span>
+            <span class="text-secondary">past path · ${t.pastPath.length - 1} maneuver segments</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="display:inline-block;width:24px;height:0;border-top:2px dashed #eab308"></span>
+            <span class="text-secondary">predicted cruise</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="display:inline-block;width:24px;height:0;border-top:2px dashed #ef4444"></span>
+            <span class="text-secondary">predicted attack / descent</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="display:inline-block;width:14px;height:14px;border:1.2px dashed #f59e0b;background:rgba(245,158,11,0.08)"></span>
+            <span class="text-secondary">divergence zone (could turn into)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="display:inline-block;width:14px;height:14px;border-radius:50%;border:1.2px solid #ef4444;background:rgba(239,68,68,0.25)"></span>
+            <span class="text-secondary">detonation impact · ±${t.detRadius} m</span>
+          </div>
+        </div>
+      </div>
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Detonation</div>
+        <div class="grid grid-cols-2 gap-y-1.5 gap-x-3">
+          <div class="text-secondary">Point</div><div class="mono">${t.detLat.toFixed(4)} N · ${t.detLng.toFixed(4)} E</div>
+          <div class="text-secondary">Impact ±</div><div class="mono">${t.detRadius} m</div>
+        </div>
+      </div>
+      <div class="px-4 py-3 border-b border-line text-xs">
+        <div class="text-[10px] text-secondary uppercase-label mb-2">Altitude band</div>
+        <div class="text-secondary leading-snug">
+          ${t.altitude < 500
+            ? 'Low altitude — MFG and MANPADS effective; many interceptor drones can engage too.'
+            : (t.altitude < 2000
+                ? 'Medium altitude — interceptor drones (Sting/F7 LITAVR) effective; MG range is borderline.'
+                : 'High altitude — only Octopus 100 / P1-SUN / MANPADS class can reach. MFGs cannot engage.')}
+        </div>
+      </div>`;
+  }
+
+  function wireInspectorJumps() {
+    document.querySelectorAll('.crew-jump').forEach(el => {
+      el.addEventListener('click', () => select('crew', el.getAttribute('data-crew'), true));
+    });
+    document.querySelectorAll('.launcher-jump').forEach(el => {
+      el.addEventListener('click', () => select('launcher', el.getAttribute('data-id'), true));
+    });
+  }
+
+  // ============== SELECT ==============
+  function select(kind, id, fly) {
+    selection = { kind, id };
+    let target;
+    if (kind === 'launcher') target = launchers.find(x => x.id === id);
+    else if (kind === 'threat') target = threats.find(x => x.id === id);
+    else target = crews.find(x => x.id === id);
+    if (target && fly) {
+      map.flyTo([target.lat, target.lng], 13, { duration: 0.7 });
+    }
+    renderMapMarkers();
+    renderPalette();
+    renderInspector();
+  }
+
+  // ============== MAP CLICK → UNSELECT ==============
+  map.on('click', () => {
+    selection = { kind: null, id: null };
+    renderMapMarkers();
+    renderPalette();
+    renderInspector();
+  });
+
+  // ============== LAYER TOGGLES ==============
+  document.getElementById('layer-threats').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    if (map.hasLayer(threatsLayer)) { map.removeLayer(threatsLayer); btn.classList.add('off'); }
+    else { map.addLayer(threatsLayer); btn.classList.remove('off'); }
+  });
+  document.getElementById('layer-launchers').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    if (map.hasLayer(launcherLayer)) { map.removeLayer(launcherLayer); btn.classList.add('off'); }
+    else { map.addLayer(launcherLayer); btn.classList.remove('off'); }
+  });
+  document.getElementById('layer-crews').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    if (map.hasLayer(crewLayer)) { map.removeLayer(crewLayer); btn.classList.add('off'); }
+    else { map.addLayer(crewLayer); btn.classList.remove('off'); }
+  });
+  document.getElementById('layer-controls').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    if (map.hasLayer(controlsLayer)) { map.removeLayer(controlsLayer); btn.classList.add('off'); }
+    else { map.addLayer(controlsLayer); btn.classList.remove('off'); }
+  });
+  document.getElementById('layer-edit').addEventListener('click', (e) => {
+    editMode = !editMode;
+    e.currentTarget.classList.toggle('off', !editMode);
+    renderMapMarkers();
+  });
+
+  // ============== ACCORDION ==============
+  document.querySelectorAll('.accordion-head').forEach(h => {
+    h.addEventListener('click', () => {
+      const body = document.getElementById(h.getAttribute('data-target'));
+      body.classList.toggle('collapsed');
+      const label = h.querySelector('.label');
+      label.textContent = body.classList.contains('collapsed')
+        ? label.textContent.replace('▾', '▸')
+        : label.textContent.replace('▸', '▾');
+    });
+  });
+
+  // ============== CENTER COORDS ==============
+  function updateCenterCoords() {
+    const c = map.getCenter();
+    document.getElementById('center-coords').textContent =
+      `${Math.abs(c.lat).toFixed(4)} ${c.lat >= 0 ? 'N' : 'S'} · ${Math.abs(c.lng).toFixed(4)} ${c.lng >= 0 ? 'E' : 'W'}`;
+  }
+  map.on('move', updateCenterCoords);
+  updateCenterCoords();
+
+  // ============== COPY POSITIONS ==============
+  function flashToast(msg) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.transform = 'translate(-50%, 0)';
+    clearTimeout(flashToast._t);
+    flashToast._t = setTimeout(() => {
+      el.style.transform = 'translate(-50%, 120px)';
+    }, 1800);
+  }
+  function buildPositionsText() {
+    const lines = [];
+    const c = map.getCenter();
+    lines.push('map:');
+    lines.push(`  center: ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`);
+    lines.push(`  zoom:   ${map.getZoom()}`);
+    lines.push('');
+    lines.push('launchers:');
+    launchers.forEach(l => {
+      lines.push(`  ${l.id.padEnd(6)} ${l.lat.toFixed(6)}, ${l.lng.toFixed(6)}`);
+    });
+    lines.push('');
+    lines.push('crews:');
+    crews.forEach(c => {
+      lines.push(`  ${c.id.padEnd(6)} ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`);
+    });
+    lines.push('');
+    lines.push('threats:');
+    threats.forEach(t => {
+      lines.push(`  ${t.id}  ${t.intercept === false ? 'passing' : 'intercept'}  alt=${t.altitude}m spd=${t.speed}km/h  → ${t.targetName}`);
+      if (t.intercept === false) {
+        lines.push(`    passingLine:`);
+        t.passingLine.forEach(p => lines.push(`      ${p[0].toFixed(6)}, ${p[1].toFixed(6)}`));
+      } else {
+        lines.push(`    current: ${t.lat.toFixed(6)}, ${t.lng.toFixed(6)}`);
+        lines.push(`    pastPath:`);
+        t.pastPath.forEach(p => lines.push(`      ${p[0].toFixed(6)}, ${p[1].toFixed(6)}`));
+        lines.push(`    futureCruise:`);
+        t.futureCruise.forEach(p => lines.push(`      ${p[0].toFixed(6)}, ${p[1].toFixed(6)}`));
+        lines.push(`    futureAttack:`);
+        t.futureAttack.forEach(p => lines.push(`      ${p[0].toFixed(6)}, ${p[1].toFixed(6)}`));
+        lines.push(`    detonation: ${t.detLat.toFixed(6)}, ${t.detLng.toFixed(6)}  radius=${t.detRadius}m`);
+        const [sw, ne] = t.uncertaintyBounds;
+        lines.push(`    divergenceBox: SW ${sw[0].toFixed(6)}, ${sw[1].toFixed(6)}  NE ${ne[0].toFixed(6)}, ${ne[1].toFixed(6)}`);
+      }
+    });
+    return lines.join('\n');
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyPositions() {
+    const text = buildPositionsText();
+    console.log('=== HOC positions ===\n' + text);
+    const done = (ok) => flashToast(ok ? 'positions copied to clipboard' : 'clipboard blocked — see console (⌥⌘I)');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => done(true))
+        .catch(() => done(fallbackCopy(text)));
+    } else {
+      done(fallbackCopy(text));
+    }
+  }
+
+  const copyBtn = document.getElementById('copy-positions');
+  if (copyBtn) copyBtn.addEventListener('click', copyPositions);
+
+  // ============== JSON EXPORT (escape hatch for the redesign) ==============
+  function exportLayerJson() {
+    const payload = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      layer: {
+        name: 'VZIL 1',
+        slug: 'vzil-1',
+        description: 'TES Ivanoff / Kivske (Burshtyn TES — Ivano-Frankivsk)',
+        mapCenter: { lat: 49.216195, lng: 24.663363 },
+        mapZoom: 13,
+      },
+      launchers,
+      crews,
+      threats,
+      noFlyCoords: NO_FLY_COORDS,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vzil-1-snapshot-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    flashToast('layer JSON downloaded');
+  }
+  const exportBtn = document.getElementById('export-json');
+  if (exportBtn) exportBtn.addEventListener('click', exportLayerJson);
+
+  window.addEventListener('keydown', (e) => {
+    const isE = e.code === 'KeyE' || (e.key && e.key.toLowerCase() === 'e');
+    if (isE && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      copyPositions();
+    }
+  });
+
+  // ============== INIT ==============
+  renderMapMarkers();
+  renderPalette();
+  renderInspector();
+
+  setTimeout(() => map.invalidateSize(), 100);
+  window.addEventListener('resize', () => map.invalidateSize());
+</script>
+
+</body>
+</html>

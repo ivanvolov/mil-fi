@@ -1,0 +1,16 @@
+{
+  "name": "hoc-orchestration-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "build:all": "npm install --include=dev && npm --prefix server install --include=dev && npm --prefix client install --include=dev && npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "seed:invites": "npm --prefix server run seed:invites",
+    "seed:invites:force": "npm --prefix server run seed:invites -- --force",
+    "backup:layers": "npm --prefix server run backup:layers"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { background: #0d1117; color: #e7e9ea; }
+
+/* ============== leaflet base overrides ============== */
+.leaflet-container { background: #0a0d12; }
+.leaflet-control-attribution { display: none; }
+.leaflet-control-zoom a {
+  background: #161b22 !important;
+  color: #8b949e !important;
+  border: 1px solid #21262d !important;
+}
+.leaflet-control-zoom a:hover { color: #06b6d4 !important; border-color: #06b6d4 !important; }
+
+/* ============== marker divIcon styles (ported from mockup/screen-1.html) ============== */
+.hoc-marker, .hoc-crew-marker, .hoc-threat-marker { background: transparent; border: 0; }
+.hoc-marker .marker-compact, .hoc-marker .marker-full,
+.hoc-crew-marker .crew-compact, .hoc-crew-marker .crew-full,
+.hoc-threat-marker .threat-compact, .hoc-threat-marker .threat-full {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+}
+.hoc-marker .marker-full, .hoc-crew-marker .crew-full, .hoc-threat-marker .threat-full { display: none; }
+.leaflet-zoom-anim .hoc-marker .marker-full,
+.leaflet-zoom-anim .hoc-crew-marker .crew-full,
+.leaflet-zoom-anim .hoc-threat-marker .threat-full { display: none; }
+
+/* expand to full label when zoomed in */
+.leaflet-zoom-level-14 .hoc-marker .marker-compact,
+.leaflet-zoom-level-15 .hoc-marker .marker-compact,
+.leaflet-zoom-level-16 .hoc-marker .marker-compact,
+.leaflet-zoom-level-17 .hoc-marker .marker-compact { display: none; }
+.leaflet-zoom-level-14 .hoc-marker .marker-full,
+.leaflet-zoom-level-15 .hoc-marker .marker-full,
+.leaflet-zoom-level-16 .hoc-marker .marker-full,
+.leaflet-zoom-level-17 .hoc-marker .marker-full { display: flex; }
+
+/* marker-compact: small pill */
+.marker-compact {
+  display: flex; align-items: center; gap: 3px;
+  padding: 2px 6px 2px 4px; border: 1px solid #06b6d4;
+  background: #0a1a1f; color: #e7e9ea;
+  font: 600 10px 'JetBrains Mono', monospace; letter-spacing: .04em; white-space: nowrap;
+  border-radius: 2px;
+}
+.marker-compact svg { display: block; }
+
+.marker-full {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border: 1px solid #06b6d4;
+  background: #0a1a1f; color: #e7e9ea; min-width: 90px;
+  font: 600 11px 'JetBrains Mono', monospace; border-radius: 2px;
+}
+.marker-full .marker-label { display: flex; flex-direction: column; line-height: 1.05; }
+.marker-full .id { color: #e7e9ea; }
+.marker-full .sub { color: #8b949e; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.marker-full .state { font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: #22c55e; }
+.marker-full .state.reload { color: #f59e0b; }
+.marker-full .state.offline { color: #8b949e; }
+
+.hoc-marker.selected .marker-compact, .hoc-marker.selected .marker-full {
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.7);
+}
+.hoc-marker.not-operational .marker-compact, .hoc-marker.not-operational .marker-full {
+  border-color: #f59e0b;
+  background: #1a130a;
+}
+.hoc-marker.infeasible .marker-compact, .hoc-marker.infeasible .marker-full {
+  opacity: 0.3;
+  filter: grayscale(0.6);
+}
+
+/* crew marker */
+.crew-compact {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border: 1.5px solid #06b6d4; background: #0a1a1f; color: #06b6d4;
+  font: 700 9px 'JetBrains Mono', monospace; letter-spacing: .04em;
+  border-radius: 50%;
+}
+.crew-full {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border: 1.5px solid #06b6d4;
+  background: #0a1a1f; color: #e7e9ea; min-width: 80px;
+  font: 600 11px 'JetBrains Mono', monospace; border-radius: 2px;
+}
+.crew-full .crew-glyph {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid #06b6d4; background: #0a1a1f; color: #06b6d4;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+}
+.crew-full .crew-label { display: flex; flex-direction: column; line-height: 1.05; }
+.crew-full .sub { color: #8b949e; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.hoc-crew-marker.selected .crew-compact, .hoc-crew-marker.selected .crew-full {
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.7);
+}
+
+.leaflet-zoom-level-14 .hoc-crew-marker .crew-compact,
+.leaflet-zoom-level-15 .hoc-crew-marker .crew-compact,
+.leaflet-zoom-level-16 .hoc-crew-marker .crew-compact,
+.leaflet-zoom-level-17 .hoc-crew-marker .crew-compact { display: none; }
+.leaflet-zoom-level-14 .hoc-crew-marker .crew-full,
+.leaflet-zoom-level-15 .hoc-crew-marker .crew-full,
+.leaflet-zoom-level-16 .hoc-crew-marker .crew-full,
+.leaflet-zoom-level-17 .hoc-crew-marker .crew-full { display: flex; }
+
+/* threat marker */
+.threat-compact {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(239, 68, 68, 0.18); border: 1px solid #ef4444; border-radius: 2px;
+}
+.hoc-threat-marker.selected .threat-compact {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.7);
+}
+
+/* edit-mode handle */
+.hoc-edit-handle { background: transparent; border: 0; }
+.hoc-edit-handle .h {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  width: 11px; height: 11px;
+  background: #f59e0b; border: 1.5px solid #0d1117;
+  box-shadow: 0 0 0 1px #f59e0b;
+}
+.hoc-edit-handle.round .h { border-radius: 50%; }
+.hoc-edit-handle.rect .h { background: #c2410c; box-shadow: 0 0 0 1px #c2410c; }
+.hoc-edit-handle.detonation .h { background: #ef4444; box-shadow: 0 0 0 1px #ef4444; }
+
+/* per-interceptor envelope ring */
+.envelope-ring {
+  stroke: #06b6d4; stroke-width: 0.8; fill: #06b6d4; fill-opacity: 0.025;
+  stroke-dasharray: 3 4; stroke-opacity: 0.35;
+}
+.envelope-ring.selected { stroke-opacity: 0.95; stroke-width: 1.4; fill-opacity: 0.06; stroke-dasharray: none; }
+.envelope-ring.mfg { stroke: #f59e0b; fill: #f59e0b; }
+.envelope-ring.manpads { stroke: #a78bfa; fill: #a78bfa; }
+
+/* control-thread line */
+.control-line { stroke: #06b6d4; stroke-width: 1; stroke-opacity: 0.55; }
+.control-line.override { stroke-dasharray: 5 4; stroke-opacity: 0.7; }
+
+/* no-fly polygon */
+.no-fly-zone { fill: url(#brick-hatch) !important; fill-opacity: 1 !important; }
+
+/* no-placement zone — semi-transparent purple so you can still see the map under it. */
+.no-placement-zone { fill: #a855f7 !important; fill-opacity: 0.18 !important; }
+
+/* uppercase label helper */
+.uppercase-label { text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* asset-list rows */
+.asset-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; cursor: pointer;
+  font: 500 11px 'JetBrains Mono', monospace;
+  border-left: 2px solid transparent;
+  color: #e7e9ea;
+}
+.asset-row:hover { background: #1c2128; }
+.asset-row.selected { background: #0d2530; border-left-color: #06b6d4; color: #06b6d4; }
+.asset-row .row-id { font-weight: 600; min-width: 38px; }
+.asset-row .row-sub { color: #8b949e; font-size: 10px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-row .chip-noop { color: #f59e0b; font-size: 9px; letter-spacing: 0.05em; }
+
+/* accordion */
+.accordion-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px;
+  font: 600 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;
+  color: #8b949e;
+  border-top: 1px solid #21262d;
+  cursor: pointer; user-select: none;
+}
+.accordion-head .count {
+  padding: 0 6px; border: 1px solid #21262d; color: #8b949e; font-size: 10px;
+}
+.accordion-body { display: flex; flex-direction: column; padding-bottom: 6px; }
+
+/* layer-btn (topbar visibility toggles) */
+.layer-btn {
+  padding: 4px 10px; font: 600 10px 'JetBrains Mono', monospace; letter-spacing: 0.04em;
+  text-transform: uppercase; border-radius: 2px;
+}
+.layer-btn.off { opacity: 0.4; }
+
+/* inspector */
+.inspector-card {
+  padding: 12px 14px; border-bottom: 1px solid #21262d;
+  font: 400 12px 'JetBrains Mono', monospace; color: #e7e9ea;
+}
+.inspector-card h2 {
+  font: 600 11px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;
+  color: #8b949e; margin-bottom: 6px;
+}
+.inspector-card .row { display: flex; justify-content: space-between; padding: 2px 0; }
+.inspector-card .row .k { color: #8b949e; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+.inspector-card .row .v { color: #e7e9ea; }
