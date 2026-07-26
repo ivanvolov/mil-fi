@@ -52,7 +52,7 @@ export const config = {
   telegramBotToken: optional('TELEGRAM_BOT_TOKEN'),
   telegramChatId: optional('TELEGRAM_CHAT_ID'),
 
-  // World integration (docs/05-integration-contract.md). All optional: with no
+  // World integration (docs/04-integration-contract.md). All optional: with no
   // signer configured, the settle-agent falls back to the humanBacked boolean
   // (demo mode) instead of verifying a signed payout authorization.
   world: {

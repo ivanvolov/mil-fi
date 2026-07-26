@@ -6,7 +6,7 @@ import { config } from '../config.js';
 export const COOKIE_NAME = 'hoc_sid';
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Access roles, mirroring the three human levels of docs/05-architecture-bounty-map.md
+/** Access roles, mirroring the three human levels of docs/03-architecture-bounty-map.md
  *  plus `admin` (demo operator, full access). Invites without a role are treated as
  *  admin so pre-role codes keep working. */
 export const ROLES = ['admin', 'government', 'military', 'spotter'] as const;

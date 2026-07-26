@@ -2,7 +2,7 @@ import { verifyMessage } from 'viem';
 import { config, worldAuthEnabled } from '../config.js';
 
 /**
- * Interface 1 — payout authorization (docs/05-integration-contract.md).
+ * Interface 1 — payout authorization (docs/04-integration-contract.md).
  *
  * The World side issues a signed authorization proving the requesting agent is
  * human-backed AND that the operator's tier permits releasing funds. Our

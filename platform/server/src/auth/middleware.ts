@@ -41,7 +41,7 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /** Coarse role gate for mutations, run AFTER requireSession. Reads are open to every
  *  authenticated role; writes are admin-only, with explicit carve-outs for the flow
- *  actions each role owns (docs/05-architecture-bounty-map.md). Extend the carve-out
+ *  actions each role owns (docs/03-architecture-bounty-map.md). Extend the carve-out
  *  list as new flow endpoints land (e.g. POST /settlement/reports for spotters). */
 export async function requireRoleForWrite(req: FastifyRequest, reply: FastifyReply) {
   const role = req.session?.role ?? 'admin';

@@ -1,7 +1,7 @@
 # verification/ — 0G Compute vision-inference harness
 
 Standalone test harness proving MilFi's verification agents (threat ID / kill confirm,
-see `docs/02-architecture.md`) can run on 0G Compute's hosted vision models via the
+see `docs/03-architecture-bounty-map.md`) can run on 0G Compute's hosted vision models via the
 OpenAI-compatible 0G Router.
 
 ## Setup
