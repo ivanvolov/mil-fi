@@ -4,7 +4,6 @@ import { Eye, MapPin, Send, Upload } from 'lucide-react';
 import { api } from '../api/client';
 import { AppRail } from '../components/AppRail';
 import { AgentACard } from '../components/settlement/VerdictCard';
-import { useMe } from '../queries/useMe';
 import { shrinkImage } from '../lib/settlement-image';
 import type { Spot } from '../types/settlement';
 import sampleThreatUrl from '../assets/settlement/drone2.jpg';
@@ -48,7 +47,6 @@ function SpotRow({ spot, selected, onSelect }: { spot: Spot; selected: boolean; 
  * the HCS evidence trail as a `report` for crews and settlement to build on.
  */
 export function SpotterPage() {
-  const label = useMe().data?.label;
   const qc = useQueryClient();
   const spots = useSpots().data ?? [];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,10 +97,6 @@ export function SpotterPage() {
         <div className="text-[10px] font-mono text-muted uppercase tracking-wider">
           see something → report it → Agent A verifies
         </div>
-        <div className="flex-1" />
-        {label && (
-          <div className="text-[10px] font-mono text-muted uppercase tracking-wider">{label}</div>
-        )}
       </header>
 
       <div className="flex-1 flex min-h-0">

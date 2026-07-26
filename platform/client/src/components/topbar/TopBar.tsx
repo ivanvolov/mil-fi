@@ -2,16 +2,9 @@ import { useState } from 'react';
 import { Box, Check, Clipboard, Moon, Sun, Wrench } from 'lucide-react';
 import type { Layer } from '@shared/schemas/layer';
 import { useUiStore } from '../../stores/uiStore';
-import { useMe, type Role } from '../../queries/useMe';
+import { useMe } from '../../queries/useMe';
 import { LayerSwitcher } from './LayerSwitcher';
 import { LayersMenu } from './LayersMenu';
-
-const ROLE_BADGE: Record<Role, { label: string; color: string }> = {
-  admin: { label: 'ADMIN', color: '#06b6d4' },
-  government: { label: 'GOV · ORB', color: '#f59e0b' },
-  military: { label: 'UNIT · ID', color: '#22c55e' },
-  spotter: { label: 'SPOTTER · SELFIE', color: '#a78bfa' },
-};
 
 export function TopBar({ layer }: { layer: Layer }) {
   const editOn = useUiStore((s) => s.visibility.edit);
@@ -21,7 +14,6 @@ export function TopBar({ layer }: { layer: Layer }) {
   const styleMode = useUiStore((s) => s.mapStyleMode);
   const setStyleMode = useUiStore((s) => s.setMapStyleMode);
   const me = useMe().data;
-  const badge = me ? ROLE_BADGE[me.role] : null;
   const [copied, setCopied] = useState(false);
 
   const copyView = async () => {
@@ -42,16 +34,6 @@ export function TopBar({ layer }: { layer: Layer }) {
   return (
     <header className="h-12 border-b border-line bg-panel flex items-center gap-3 px-5 shrink-0">
       <div className="text-lg font-bold tracking-[0.25em]">HOC</div>
-
-      {badge && (
-        <span
-          title={`Logged in as ${me!.label} (${me!.role})`}
-          className="font-mono text-[9px] uppercase tracking-wider border px-1.5 py-0.5"
-          style={{ color: badge.color, borderColor: badge.color, background: `${badge.color}14` }}
-        >
-          {badge.label}
-        </span>
-      )}
 
       <LayerSwitcher />
 
