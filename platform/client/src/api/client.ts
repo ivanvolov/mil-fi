@@ -12,8 +12,10 @@ import type {
   Engagement,
   LedgerResponse,
   OnboardBody,
+  ReportSpotBody,
   RunEngagementBody,
   SettlementStatus,
+  Spot,
   Unit,
   UnitBalance,
 } from '../types/settlement';
@@ -221,6 +223,11 @@ export const api = {
     http<Engagement>('POST', '/settlement/engagements', { body }),
 
   getEngagements: () => http<Engagement[]>('GET', '/settlement/engagements'),
+
+  // Spotter flow: 1 live 0G inference call — expect ~5-15s.
+  reportSpot: (body: ReportSpotBody) => http<Spot>('POST', '/settlement/spots', { body }),
+
+  getSpots: () => http<Spot[]>('GET', '/settlement/spots'),
 
   getEngagement: (id: string) =>
     http<Engagement>('GET', `/settlement/engagements/${encodeURIComponent(id)}`),

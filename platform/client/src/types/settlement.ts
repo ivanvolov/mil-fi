@@ -147,6 +147,22 @@ export type RunEngagementBody = {
 
 export type UnitBalance = { accountId: string | null; balance: number };
 
+/** A civilian spotter sighting: one image → Agent A verdict, journaled as `report`. */
+export type Spot = {
+  _id: string;
+  spotterLabel: string;
+  coords: { lat: number; lon: number } | null;
+  note: string | null;
+  agentA: AgentRunRecord<AgentAVerdict>;
+  createdAt: string;
+};
+
+export type ReportSpotBody = {
+  image: ImagePayload;
+  coords?: { lat: number; lon: number };
+  note?: string;
+};
+
 /** True when a ledger entry's record parsed as a structured evidence record. */
 export function isEvidenceRecord(r: LedgerEntry['record']): r is EvidenceRecord {
   return 'kind' in r;

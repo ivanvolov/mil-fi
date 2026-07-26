@@ -1,11 +1,13 @@
+import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Collections } from '../db.js';
+import type { Collections, SpotDoc } from '../db.js';
 import { HttpError } from '../lib/crud.js';
 import { config, hederaEnabled } from '../config.js';
 import { onboardUnit, runEngagement, type UnitDoc } from '../services/engagement.js';
-import { readJournal, forEngagement } from '../hedera/journal.js';
+import { evidence, submitEvidence, readJournal, forEngagement } from '../hedera/journal.js';
 import { defpointBalance } from '../hedera/token.js';
+import { runAgentA } from '../verification/agents.js';
 
 const ImageInput = z.union([
   z.object({ dataUrl: z.string() }),
@@ -41,6 +43,12 @@ const AuthorizationInput = z
     nonce: z.string(),
   })
   .optional();
+
+const SpotBody = z.object({
+  image: ImageInput,
+  coords: z.object({ lat: z.number(), lon: z.number() }).optional(),
+  note: z.string().max(500).optional(),
+});
 
 const RunBody = z.object({
   unitId: z.string().min(1),
@@ -101,6 +109,56 @@ export async function registerEngagementRoutes(app: FastifyInstance, c: Collecti
     const doc = await c.engagements.findOne({ _id: req.params.id });
     if (!doc) throw new HttpError(404, 'NO_ENGAGEMENT', `no engagement ${req.params.id}`);
     return doc;
+  });
+
+  // Spotter flow: one image → Agent A threat ID on 0G, journaled to HCS as a
+  // `report`. No payout — a spot is raw intel that crews/settlement build on.
+  app.post<{ Body: unknown }>('/settlement/spots', async (req) => {
+    const body = SpotBody.parse(req.body);
+    const spotId = `spot-${crypto.randomBytes(5).toString('hex')}`;
+    const spotter = req.session?.label ?? 'unknown';
+
+    let a: Awaited<ReturnType<typeof runAgentA>>;
+    try {
+      a = await runAgentA(body.image);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'threat identification failed';
+      throw new HttpError(502, 'SPOT_FAILED', msg);
+    }
+
+    const journal = await submitEvidence(
+      evidence('report', spotId, {
+        spotter,
+        imageHash: a.imageHash,
+        verdict: a.verdict,
+        requestId: a.requestId,
+        model: a.model,
+        coords: body.coords ?? null,
+        note: body.note ?? null,
+      }),
+    );
+
+    const doc: SpotDoc = {
+      _id: spotId,
+      spotterLabel: spotter,
+      coords: body.coords ?? null,
+      note: body.note ?? null,
+      agentA: {
+        verdict: a.verdict,
+        requestId: a.requestId,
+        model: a.model,
+        imageHash: a.imageHash,
+        latencyMs: a.latencyMs,
+        journal,
+      },
+      createdAt: new Date(),
+    };
+    await c.spots.insertOne(doc);
+    return doc;
+  });
+
+  app.get('/settlement/spots', async () => {
+    return c.spots.find().sort({ createdAt: -1 }).limit(50).toArray();
   });
 
   // The public ledger: replay the HCS journal (optionally for one engagement)

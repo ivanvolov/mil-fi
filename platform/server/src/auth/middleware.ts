@@ -50,7 +50,8 @@ export async function requireRoleForWrite(req: FastifyRequest, reply: FastifyRep
 
   const url = req.url.split('?')[0] ?? '';
   const allowed =
-    role === 'military' && req.method === 'POST' && url.startsWith('/api/v1/settlement/engagements');
+    (role === 'military' && req.method === 'POST' && url.startsWith('/api/v1/settlement/engagements')) ||
+    (role === 'spotter' && req.method === 'POST' && url === '/api/v1/settlement/spots');
   if (allowed) return;
 
   return reply.status(403).send({

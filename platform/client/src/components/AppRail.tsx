@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Map, Scale, Settings, LogOut, type LucideIcon } from 'lucide-react';
+import { Eye, Map, Scale, Settings, LogOut, type LucideIcon } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore';
-import { useMe } from '../queries/useMe';
+import { useMe, type Role } from '../queries/useMe';
 
 async function logout() {
   try {
@@ -16,6 +16,9 @@ type Tab = {
   to: string;
   icon: LucideIcon;
   active: (pathname: string) => boolean;
+  /** Roles that see this tab. Presentation-only — the server enforces the real
+   *  rules — so hidden routes stay reachable by URL (handy mid-demo). */
+  roles: Role[];
 };
 
 function RailLink({ tab, active }: { tab: Tab; active: boolean }) {
@@ -41,29 +44,43 @@ export function AppRail() {
   const lastSlug = useUiStore((s) => s.lastLayerSlug) ?? 'vzil-1';
   const { pathname } = useLocation();
   const role = useMe().data?.role;
-  const topTabs: Tab[] = [
+  // Each role gets its own workspace: military → Sector (+ Settle to file
+  // engagements), government → Settle, spotters → Spot, admin → everything.
+  // While role is still loading, render no tabs (most-restricted view).
+  const forRole = (tabs: Tab[]) => (role ? tabs.filter((t) => t.roles.includes(role)) : []);
+  const topTabs: Tab[] = forRole([
     {
       label: 'Sector',
       to: `/layers/${lastSlug}`,
       icon: Map,
       active: (p) => p.startsWith('/layers/'),
+      roles: ['admin', 'military'],
+    },
+    {
+      label: 'Spot',
+      to: '/spotter',
+      icon: Eye,
+      active: (p) => p === '/spotter',
+      roles: ['admin', 'spotter'],
     },
     {
       label: 'Settle',
       to: '/settlement',
       icon: Scale,
       active: (p) => p === '/settlement',
+      roles: ['admin', 'government', 'military'],
     },
-  ];
+  ]);
   // Sandbox + Releases are hidden for the bounty demo (routes still work by URL).
-  const bottomTabs: Tab[] = [
+  const bottomTabs: Tab[] = forRole([
     {
       label: 'Settings',
       to: '/types',
       icon: Settings,
       active: (p) => p === '/types',
+      roles: ['admin'],
     },
-  ];
+  ]);
 
   return (
     <nav className="w-12 shrink-0 bg-bg border-r border-line flex flex-col items-center py-2 gap-1">

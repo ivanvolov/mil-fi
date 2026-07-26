@@ -32,6 +32,14 @@ export interface EngagementDoc {
   [k: string]: unknown;
 }
 
+/** One civilian spotter sighting: single image → Agent A verdict. */
+export interface SpotDoc {
+  _id: string;
+  spotterLabel: string;
+  createdAt: Date;
+  [k: string]: unknown;
+}
+
 export interface Collections {
   interceptorTypes: Collection<Document>;
   threatTypes: Collection<Document>;
@@ -46,6 +54,7 @@ export interface Collections {
   // MilFi settlement layer
   units: Collection<UnitDoc>;
   engagements: Collection<EngagementDoc>;
+  spots: Collection<SpotDoc>;
 }
 
 let _client: MongoClient | null = null;
@@ -74,6 +83,7 @@ export async function connectDb(): Promise<{ client: MongoClient; db: Db; collec
     sessions: _db.collection<SessionRow>('sessions'),
     units: _db.collection<UnitDoc>('units'),
     engagements: _db.collection<EngagementDoc>('engagements'),
+    spots: _db.collection<SpotDoc>('spots'),
   };
 
   await ensureIndexes(_collections);
@@ -122,6 +132,7 @@ async function ensureIndexes(c: Collections) {
     c.units.createIndex({ hederaAccountId: 1 }),
     c.engagements.createIndex({ unitId: 1 }),
     c.engagements.createIndex({ createdAt: -1 }),
+    c.spots.createIndex({ createdAt: -1 }),
   ]);
 }
 
