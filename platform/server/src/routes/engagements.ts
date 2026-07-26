@@ -19,6 +19,8 @@ const OnboardBody = z.object({
   unitId: z.string().min(1).optional(),
   humanBackingLevel: z.enum(['government', 'spotter', 'military']),
   worldProof: z.unknown().optional(),
+  worldNullifier: z.string().optional(),
+  worldTier: z.number().int().min(0).max(3).optional(),
 });
 
 const RuleInput = z

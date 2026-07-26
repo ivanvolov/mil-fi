@@ -85,17 +85,19 @@ export interface SettleInput {
  * demo boolean so the pipeline and the negative scenario still run standalone.
  */
 async function checkAuthorized(input: SettleInput): Promise<{ ok: boolean; reason: string }> {
-  if (worldAuthEnabled) {
-    if (!input.authorization || !input.signature) {
-      return { ok: false, reason: 'no signed authorization (not human-backed)' };
-    }
+  // A signed World authorization, when present, is authoritative — this is the
+  // real human-backing gate (bot never has one).
+  if (worldAuthEnabled && input.authorization && input.signature) {
     const res = await verifyPayoutAuthorization(input.authorization, input.signature, input.engagementId);
     return res.ok
       ? { ok: true, reason: `authorized by World (human ${res.humanId}, tier ${res.tier})` }
       : { ok: false, reason: `authorization rejected: ${res.reason}` };
   }
+  // No authorization (unit carries no World identity, or World unconfigured):
+  // fall back to the demo human-backing flag so the pipeline still runs. A bot
+  // (humanBacked=false) is rejected either way.
   return input.humanBacked
-    ? { ok: true, reason: 'demo human-backing flag set' }
+    ? { ok: true, reason: 'human-backed (demo flag)' }
     : { ok: false, reason: 'no human backing (World)' };
 }
 

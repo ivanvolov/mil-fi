@@ -39,7 +39,10 @@ async function main() {
   console.log('=== 1. human-backed military unit ===');
   const human = await onboardUnit(collections, {
     humanBackingLevel: 'military',
-    worldProof: { demo: true, note: 'placeholder until World step 5' },
+    worldProof: { demo: true, note: 'demo-mode fallback' },
+    // Real World identity → run flow pulls a signed authorization from World.
+    worldNullifier: '0xhumanNullifierDemo',
+    worldTier: 3,
   });
   console.log(`  unit=${human._id} account=${human.hederaAccountId} humanBacked=${human.humanBacked}`);
 

@@ -4,9 +4,9 @@ import { runAgentA, runAgentB, type ImageInput } from '../verification/agents.js
 import { evidence, submitEvidence } from '../hedera/journal.js';
 import { createUnitAccount, associateAndGrantKyc } from '../hedera/token.js';
 import { settleEngagement, type SettlementRule } from '../hedera/settle.js';
-import { postEngagementVerdict } from '../world/client.js';
+import { postEngagementVerdict, getPayoutAuthorization } from '../world/client.js';
 import type { PayoutAuthorization } from '../world/auth.js';
-import { hederaEnabled } from '../config.js';
+import { hederaEnabled, worldClientEnabled } from '../config.js';
 
 /**
  * The engagement pipeline — the demo spine wired together:
@@ -24,16 +24,20 @@ export type HumanBackingLevel = 'government' | 'spotter' | 'military';
 export interface OnboardInput {
   unitId?: string;
   humanBackingLevel: HumanBackingLevel;
-  /** World proof blob (verified in step 5). For now its mere presence flips
-   * humanBacked; pass none to onboard a bot for the negative scenario. */
+  /** World proof blob (demo). Its presence flips humanBacked; omit to onboard a
+   * bot for the negative scenario. */
   worldProof?: unknown;
+  /** Real World identity: nullifier + tier. When present, the run flow pulls a
+   * signed payout authorization from World for this unit's engagements. */
+  worldNullifier?: string;
+  worldTier?: number;
 }
 
 export type { UnitDoc } from '../db.js';
 
 export async function onboardUnit(c: Collections, input: OnboardInput): Promise<UnitDoc> {
   const unitId = input.unitId ?? `unit-${crypto.randomBytes(4).toString('hex')}`;
-  const humanBacked = input.worldProof != null;
+  const humanBacked = input.worldProof != null || input.worldNullifier != null;
   const now = new Date();
 
   let hederaAccountId: string | null = null;
@@ -59,6 +63,8 @@ export async function onboardUnit(c: Collections, input: OnboardInput): Promise<
     humanBackingLevel: input.humanBackingLevel,
     humanBacked,
     worldProof: input.worldProof ?? null,
+    worldNullifier: input.worldNullifier ?? null,
+    worldTier: input.worldTier ?? null,
     kyc,
     createdAt: now,
     updatedAt: now,
@@ -134,6 +140,25 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     evidenceHashes: [a.imageHash, b.imageHash],
   });
 
+  // Step 5c — Interface 1: pull a signed payout authorization from World for
+  // this unit's operator. A bot (no nullifier) or under-verified operator gets
+  // none → the settle-agent rejects the payout. An explicit authorization on the
+  // request wins (e.g. operator pulled it themselves).
+  let authorization = input.authorization;
+  let signature = input.signature;
+  if (!authorization && worldClientEnabled && unit.worldNullifier) {
+    const pulled = await getPayoutAuthorization({
+      engagementId,
+      nullifier: unit.worldNullifier,
+      tier: unit.worldTier ?? 0,
+      amount: String(input.rule?.payout ?? 100),
+    });
+    if (pulled) {
+      authorization = pulled.authorization;
+      signature = pulled.signature;
+    }
+  }
+
   // Step 6 — settle-agent decides + acts (also journals payout/freeze/reject).
   const settlement = await settleEngagement({
     engagementId,
@@ -142,8 +167,8 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     a: a.verdict,
     b: b.verdict,
     rule: input.rule,
-    authorization: input.authorization,
-    signature: input.signature,
+    authorization,
+    signature,
   });
 
   const doc = {

@@ -19,6 +19,9 @@ export interface UnitDoc {
   humanBackingLevel: 'government' | 'spotter' | 'military';
   humanBacked: boolean;
   worldProof: unknown;
+  /** World identity used to pull a signed payout authorization (Interface 1). */
+  worldNullifier: string | null;
+  worldTier: number | null;
   kyc: { associateTx: string; kycTx: string } | null;
   createdAt: Date;
   updatedAt: Date;
