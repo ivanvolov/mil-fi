@@ -16,6 +16,9 @@ export default defineConfig({
   // really sits next to the JS.
   optimizeDeps: {
     exclude: ['@worldcoin/idkit', '@worldcoin/idkit-core'],
+    // Excluding idkit stops Vite from converting its CJS deps too; qrcode is
+    // CJS-only and must still be pre-bundled or the browser chokes on it.
+    include: ['@worldcoin/idkit > qrcode/lib/core/qrcode.js'],
   },
   resolve: {
     alias: {
