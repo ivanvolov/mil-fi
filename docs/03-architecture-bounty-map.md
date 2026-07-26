@@ -1,114 +1,209 @@
-# 03 — Архитектура по-человечески: кто что делает и какой баунти это закрывает
+# 03 — Architecture & bounty map
 
-Только архитектура и требования спонсоров к ней. Механика сабмита (видео, форма, репо) — отдельная тема, она в `05-submission-checklist.md`, здесь её нет.
-
----
-
-## Роли: три уровня людей (World)
-
-В системе три типа людей, и у каждого свой уровень проверки личности. Это не «логин через World» — уровень проверки определяет, что человеку разрешено делать и сколько ему можно доверять денег.
-
-**Уровень 1 — Government (проверка Orb, высшая биометрия).**
-Чиновники/распорядители программы. Они задают правила выплат: пороги уверенности («платим от 95%»), тарифы за типы целей, право замораживать спорные выплаты. Orb — потому что это люди, которые распоряжаются деньгами программы: максимальный уровень доверия.
-
-**Уровень 2 — Наводчики (проверка Selfie Check, селфи-живость без Orb).**
-Гражданские, которые видят летящую угрозу и репортят её: фото + координаты + время. Селфи-проверка — потому что Orb в прифронтовом городе недоступен, а отсечь ботов, заваливающих систему фейковыми репортами, надо. Их репорт — вход всей воронки.
-
-**Уровень 3 — Военные (проверка документом / Identity Check).**
-Расчёты, которые сбивают. Им нужны выплаты — значит, нужен максимум подотчётности без Orb: подтверждённый документ. World Identity Check выдаёт «документ реальный + юрисдикция Украина»; настоящую сверку с реестром военных не делаем, для демо документ+юрисдикция — прокси статуса «military of Ukraine». Это честно записываем как ограничение.
-
-**Как это связано с деньгами.** За каждый юнит действует его программный агент (подаёт заявки, получает выплаты). Через World AgentKit агент несёт доказательство: «за мной стоит реальный, уникальный, проверенный человек уровня N». Settle-агент (см. раздел Hedera) перед выплатой проверяет это доказательство. Нет человека за агентом → выплаты нет. Один человек не может изображать десять юнитов и умножать заявки.
-
-**Хватает ли для баунти World — да, на три трека сразу (а слот на форме всё равно один):**
-- *AgentKit New Use Cases* ($4,000/$2,500/$1,500). Требуют: AgentKit проверяет human-backing, и от результата проверки реально меняется поведение системы. У нас меняется самое дорогое — идёт или не идёт выплата. Запрещены заезженные паттерны (репутация агентов, скидки за human-backing) — наш вертикаль «авторизация автономных военных выплат» новый, это их явный критерий.
-- *Selfie Check Beta* ($1,000/$750). Требуют: Selfie как реальный сигнал допуска (у нас — право подавать репорты) + документация тестирования: что мешало нам как разработчикам и что мешало пользователю. Вести файл `docs/world-feedback.md` с первого касания SDK — это буквально половина оценки.
-- *Identity Check Beta* ($1,000/$750). То же самое про паспортный уровень + объяснение, зачем нам именно этот атрибут и как мы минимизируем сбор данных (мы не храним документ, храним только «проверен/не проверен + юрисдикция»).
+How the system is built, and which sponsor track each component addresses. Submission
+mechanics (video, form, repo) live in [05 — Submission checklist](./05-submission-checklist.md).
 
 ---
 
-## Поток одного сбития, шаг за шагом
+## Roles: three verification tiers (World)
 
-**Шаг 1. Репорт угрозы.** Наводчик (уровень 2) публикует: фото объекта в небе + координаты + время. Попадает в платформу (`platform/` — наша существующая карта с перехватчиками и угрозами; она сцена и интерфейс всей системы, сама по себе баунти не закрывает).
+Three types of people operate the system, each with an identity-assurance level matched to
+their role. This is not "login with World" — the verification tier determines what a person is
+allowed to do and how much money can be trusted to flow through them.
 
-**Шаг 2. Агент A — «это вообще угроза?»** Первый ИИ-агент берёт фото из репорта и отвечает строгим JSON: угроза или нет, класс (Shahed / другой БПЛА / самолёт / не угроза), что видно на фото, уверенность 0..1, одно предложение почему. Это ответ на вопрос, на который государство сейчас тратит месяцы ручной проверки («а был ли это вообще самолёт, а не собака»). Работает уже сейчас: модель qwen2.5-omni на 0G, все тестовые картинки дают правильный вердикт (ретривер → не угроза, Shahed в полёте → угроза, обломки → shahed_class).
+**Level 1 — Government (Orb verification, highest biometric assurance).**
+Program administrators. They set the payout policy the settle-agent enforces: confidence
+thresholds ("pay from 95%"), per-target-class tariffs, and the right to freeze disputed
+payouts. Orb, because these are the people who control program money — maximum assurance.
 
-**Шаг 3. Сбитие.** Расчёт (уровень 3) поражает цель. Платформа фиксирует engagement: кто, чем, когда, по какой угрозе.
+**Level 2 — Spotters (Selfie Check, selfie liveness without an Orb).**
+Civilians who see an incoming threat and report it: photo + coordinates + time. Selfie Check,
+because an Orb is not accessible in a frontline city, but bots flooding the system with fake
+reports must be kept out. Their report is the entry point of the whole funnel.
 
-**Шаг 4. Агент B — «цель уничтожена?»** Второй ИИ-агент берёт фото ПОСЛЕ сбития — с тех же координат, в идеале тепловизионное — и отвечает: цели в воздухе больше нет / вот обломки / тепловая сигнатура детонации есть, и согласуется ли это с тем, что видел Агент A (место, окно времени). Два независимых агента на двух разных снимках — подделать сложнее, чем один кадр.
+**Level 3 — Military units (document-backed verification).**
+The crews that intercept. They receive the payouts, so they need the highest accountability
+available without an Orb: a document-backed credential. World's document credential attests
+"the document is real"; a nationality/jurisdiction attestation via Identity Check is the
+designed follow-up. We do not check against a military registry — for the demo, document +
+jurisdiction is a proxy for "military unit of Ukraine". This is recorded openly as a
+limitation. *(Implementation status: the passport credential flow is wired; the separate
+Identity Check nationality attestation is future work.)*
 
-**Нерешённая проблема (записываем честно, не прячем):** мы не доказываем криптографически, что фото снято именно там и именно тогда — камеру можно направить на экран. Смягчения: (а) две независимые модальности, (б) инференс идёт на 0G вне контроля того, кто получает деньги, (в) спорные и малоуверенные случаи уходят в ручную очередь, (г) неизменяемый след в Hedera делает возможным разбор и наказание задним числом. Полная аттестация камеры (secure enclave на дроне-наблюдателе) — future work.
+**How this connects to money.** Each unit is represented by a software claim-agent (files
+claims, receives payouts). Through World AgentKit, the agent carries proof that "a real,
+unique, verified human stands behind me". The settle-agent (see the Hedera section) verifies
+that proof before any payout. No human behind the agent → no payout. Multiple agent wallets
+registered by the same human all resolve to the same `humanId` in AgentBook, so one person
+cannot impersonate ten units to multiply claims.
 
-**Шаг 5. Все следы — в журнал Hedera.** Каждый артефакт шагов 1–4 (хэши фото, оба вердикта, включая неудачные попытки и повторы, кто из агентов что сказал) публикуется в HCS — журнал с консенсус-таймстемпами. Подробно — в разделе Hedera.
-
-**Шаг 6. Решение и выплата.** Settle-агент читает журнал, применяет правило, заданное government-уровнем («A сказал угроза с ≥95% И B подтвердил уничтожение → плати столько-то»), проверяет human-backing агента юнита — и сам переводит токены на счёт юнита. Секунды вместо месяцев.
-
-**Шаг 7. Трата.** Юнит тратит баллы на маркетплейсе (перевод обратно в трежери).
-
-**Шаг 8. Негативный сценарий (обязателен для World).** Бот без человека за спиной подаёт тот же клейм → отказ. Спорное сбитие → счёт юнита заморожен до разбора.
-
-**Про «агентам платят за работу».** Идея правильная и уже имеет готовый слот в архитектуре: settle-агент может платить Агентам A и B микроплатёж за каждую проверенную картинку (стандарт x402 поверх Hedera). Это превращает проверку в рынок услуг между агентами и даёт extra points в баунти Hedera. Делаем, если останется время — необязательный усилитель.
-
----
-
-## 0G: что делает и что от нас требует баунти
-
-**Что 0G делает у нас.** 0G — облако для запуска ИИ-моделей. Оба вижн-агента (A и B) — это вызовы моделей, размещённых на 0G Compute, а не на OpenAI/локально. Зачем именно 0G по сути: инференс может исполняться в TEE — защищённом анклаве процессора, — то есть вердикт производится в среде, которую не контролирует ни мы, ни получатель денег, и этому есть криптографическое подтверждение.
-
-**Требование «Proof of 0G Compute inference» — что это значит словами.** 0G хочет доказательство, что модель реально крутится у них, а не что мы дёргаем ChatGPT и рисуем логотип 0G. Доказательство = следы наших вызовов: у каждого запроса к их API есть request_id (уникальный номер запроса, приходит в ответе), а в их консоли есть страница Activity, где видно наше потребление. Мы это уже имеем — вызовы работают. Надо просто сохранить: пару JSON-ответов с request_id + скриншот Activity.
-
-**Про TEE-ключ — что за «усилить» и зачем.** Когда в консоли 0G создаёшь API-ключ, выбираешь режим доверия: Standard (запрос уйдёт любому провайдеру), Verified (только проверяемым), Private (только в TEE-анклав). Наш текущий ключ `milfi-dev` создан в режиме Standard — значит формально мы не можем говорить «наш инференс TEE-sealed», а это главный маркетинговый тезис 0G. Исправление на 15 минут руками в консоли: создать второй ключ в режиме Private (TEE), прогнать ту же команду detect один раз с этим ключом — теперь в логах есть вызов, реально прошедший через анклав, и слова «TEE-sealed» в сабмите становятся правдой.
-
-**Требование «Contract deployment addresses» — почему нам не нужен свой контракт.** В форме сабмита есть поле «адреса задеплоенных контрактов». Свой Solidity-контракт нам писать нельзя (сломает трек Hedera No Solidity, см. ниже) и не нужно: у 0G есть Agentic ID — он-чейн паспорт для ИИ-агента, NFT в их уже задеплоенных контрактах. Минтим по одному Agentic ID для Агента A и Агента B → получаем ссылку на explorer (для Agentic-ID-проектов она и так обязательна) и адрес контракта, который вписываем в поле формы. Запись самих вердиктов в блокчейн 0G у них помечена как optional — пропускаем, вердикты и так лягут в журнал Hedera.
-
-**Требование «working, demoable product»** — живая ссылка или запускаемый билд, не просто репозиторий. У платформы уже есть Render-сервис — надо чтобы он был жив и открывался без логина.
-
-**Плюс, который стоит проговаривать вслух: приватность и проверяемость одновременно.** Обычно приходится выбирать — либо данные секретные (но тогда никто не может проверить, что сбитие реальное), либо всё публично и проверяемо (но тогда секретные военные данные утекают). У нас оба сразу, потому что три вещи разведены:
-- *Сырое фото/видео (кадр дрона, фото сбития)* — нигде не публично. Либо в нашей базе, либо (если подключим 0G Storage) там в зашифрованном виде. Не на CDN, не в блокчейне.
-- *Обработка* — внутри TEE-анклава на 0G. Картинку не видит никто, включая нас и оператора 0G. Она там не хранится — заходит, обрабатывается, наружу выходит только текстовый вердикт.
-- *В блокчейн (Hedera HCS / 0G Chain) уходит только хэш картинки + вердикт.* Хэш — односторонний отпечаток (строка вроде `a3f9c2…`), из которого картинку математически не восстановить. Любой аудитор на HashScan видит «был вердикт Shahed 0.97, хэш фото такой-то», проверяет что сбитие не подрисовано задним числом — и при этом само фото ему недоступно.
-
-Публичность блокчейна здесь работает на нас: она даёт проверяемость, не раскрывая ни одного пикселя. Оговорка: слово «TEE» становится правдой только на ключе в режиме Private (см. абзац про TEE-ключ выше) — на Standard-ключе данные в анклав не идут.
-
-**Статус 0G:** инференс работает (Агент A) — сделано. Агент B — тот же код с другим промптом, ~час. TEE-ключ + один прогон — 15 минут руками. Agentic ID минт — надо разобраться с их SDK. Деплой — Render уже существует.
+**World tracks this addresses:**
+- *AgentKit New Use Cases* — AgentKit verifies human-backing, and the outcome changes the most
+  consequential thing in the system: whether money moves. Autonomous payout authorization in a
+  defense-contracting economy is the new workflow and trust model this track asks for.
+- *Selfie Check Beta* — Selfie Check is a real eligibility signal (the right to submit threat
+  reports), not a generic login. The required testing documentation — developer feedback and
+  user feedback — lives in [`world-feedback.md`](./world-feedback.md).
+- *Identity Check* — the document tier explains why the attribute is needed (payout
+  accountability) and minimizes data collection: we never store the document, only
+  "verified / not verified + jurisdiction allowed".
 
 ---
 
-## Hedera: что делает и что от нас требует баунти
+## One engagement, step by step
 
-**Два сервиса, оба нативные, ноль смарт-контрактов.**
+**Step 1. Threat report.** A spotter (level 2) submits: a photo of the object in the sky +
+coordinates + time. It lands in the platform (`platform/` — the coordination map with
+interceptors and threats; it is the stage and UI of the system).
 
-**HCS (Consensus Service) — журнал улик.** Это не контракт, это сервис «положи сообщение — получи консенсус-таймстемп». На каждое сбитие создаётся топик (лента), в которую settlement-сервис пишет по порядку: сбитие открыто → хэш фото репорта → вердикт Агента A → хэш фото после → вердикт Агента B → квитанция о выплате. Таймстемп ставит сеть, поэтому задним числом ничего не перепишешь и не вставишь — это ровно та гарантия «никто не нарисовал сбитие вчерашней датой», которой нет у бумажного процесса. Любой аудитор открывает HashScan (их публичный обозреватель) и перечитывает всю историю.
+**Step 2. Agent A — "is this a threat at all?"** The first AI agent takes the report photo and
+answers in strict JSON: threat or not, class (Shahed / other UAV / aircraft / not a threat),
+what is visible, confidence 0..1, one-sentence reasoning. This is the question that currently
+costs the state months of manual review. It runs today: `qwen2.5-omni` on 0G Compute; the test
+fixtures produce correct verdicts (retriever → not a threat, Shahed in flight → threat,
+wreckage → shahed_class).
 
-**HTS (Token Service) — сами деньги.** Токен DEFPOINT = е-баллы. Тоже без контракта: создание токена, переводы, и три ключа управления на уровне протокола — kycKey (получать токен могут только счета, прошедшие World-проверку), freezeKey (заморозить счёт юнита на время спора), pauseKey (аварийный стоп всей программы). Комплаенс, который на других цепях пишут контрактами, здесь — флаги при создании токена.
+**Step 3. Interception.** A unit (level 3) engages the target. The platform records the
+engagement: who, with what, when, against which threat.
 
-**Settle-агент — тот самый «другой агент, который смотрит и платит».** Автономный цикл на Hedera Agent Kit (не обработчик HTTP-запросов — это важно для баунти: агент должен решать и действовать сам). Он читает топики через Mirror Node (бесплатное REST-API для чтения состояния сети), применяет правило government-уровня — «A: угроза ≥95%, B: уничтожение подтверждено → перевести N DEFPOINT» — проверяет human-backing (World) и исполняет перевод трежери → счёт юнита. Момент, когда ИИ-агент самостоятельно двигает деньги — это дословно тезис баунти.
+**Step 4. Agent B — "was the target destroyed?"** The second AI agent takes the post-strike
+photo — same coordinates, ideally thermal — and answers: the target is no longer airborne /
+here is the wreckage / a detonation signature is present, and whether this is consistent with
+what Agent A saw (location, time window). Two independent agents on two different captures are
+harder to fake than a single frame.
 
-**Кошельки — да, вы поняли правильно.** У каждого юнита свой Hedera-аккаунт. Создаётся автоматически при онбординге (шаг 0), туда же вешается KYC-грант после World-проверки. Держать ключи руками никому не надо: ключи юнит-аккаунтов хранит settlement-сервис (для демо; в реальности — кастодиальное решение или ключи у юнитов).
+**Open problem (recorded honestly, not hidden):** we do not cryptographically prove that a
+photo was taken at that place and time — a camera can be pointed at a screen. Mitigations:
+(a) two independent modalities; (b) inference runs on 0G, outside the control of the party who
+gets paid; (c) disputed and low-confidence cases go to a manual adjudication queue (the unit's
+account is frozen meanwhile); (d) the immutable Hedera trail makes retroactive audit and
+sanction possible. Full camera attestation (secure enclave on an observer drone) is future
+work.
 
-**Scheduled Transactions — экономика контрактора.** Регулярный платёж объекта (электростанция платит за защиту раз в неделю) как нативная отложенная транзакция — сеть исполнит сама, без крон-ботов. Третий нативный сервис в копилку.
+**Step 5. Every artifact goes to the Hedera journal.** Each artifact of steps 1–4 (photo
+hashes, both verdicts including failed attempts and retries, which agent said what) is
+published to HCS — a log with consensus timestamps. Details in the Hedera section.
 
-**Хватает ли для баунти Hedera — да, на два трека одним кодом:**
-- *AI & Agentic Payments* ($3,000 × 2 команды) — основной. Требуют: ИИ-агент исполняет минимум одну оплату/токен-операцию на Testnet сам; используется Agent Kit или SDK; в README описан payment flow. Наш settle-агент — это оно. Extra points, которые у нас получаются сами собой: Agent Kit ✓, KYC/freeze на токене ✓, аудит-трейл в HCS ✓, Scheduled ✓. Ещё два по желанию: HCS-14 (он-чейн ID для агентов, дёшево и красиво — «какой именно агент дал вердикт» становится частью улик) и x402 (оплата агентам за проверку, см. выше).
-- *No Solidity Allowed* ($1,000 × 3 команды) — автоматом тем же кодом. Требуют: только SDK, ≥2 нативных сервиса, ноль Solidity. У нас четыре сервиса (HTS + HCS + Scheduled + Mirror Node) и ноль контрактов по построению. Следствие-ограничение на весь проект: ни одного .sol-файла нигде в репо, включая сторону 0G.
-- *Tokenization* ($1,500 × 2) — формально тоже подошли бы, пропускаем осознанно: платит меньше, история та же, фокус размывает.
+**Step 6. Decision and payout.** The settle-agent reads the journal, applies the
+government-set rule ("A said threat at ≥95% AND B confirmed destruction → pay the tariff"),
+verifies the unit agent's human-backing — and transfers tokens to the unit's account itself.
+Seconds instead of months.
 
-**Статус Hedera: не начато ничего.** Нужен testnet-аккаунт (создаётся на portal.hedera.com — это руками), потом: модуль клиента + создание DEFPOINT, топики + схема сообщений, settle-агент, ledger-панель в платформе.
+**Step 7. Spending.** The unit spends its points on the marketplace (transfer back to
+treasury).
+
+**Step 8. Negative scenarios (required for the World track).** A bot with no human behind it
+submits the same claim → refusal. A disputed downing → the unit's account is frozen until
+adjudication (Government console: release payout / deny claim).
+
+**Agents being paid for work.** The settlement layer has a natural slot for the settle-agent
+to pay Agents A and B a micropayment per verified image (the x402 standard over Hedera),
+turning verification into an agent-to-agent service market. Not implemented — future work.
 
 ---
 
-## Сводка: компонент → функция → баунти
+## 0G: what it does here and how the track requirements are met
 
-- Три уровня людей + AgentKit-привязка агентов к людям (`app/`) → World: AgentKit + Selfie Beta + Identity Beta
-- Агент A (угроза?) и Агент B (уничтожена?) на 0G Compute (`verification/`) → 0G Best AI Product
-- Agentic ID для A и B → закрывает поле «contract addresses» у 0G
-- Журнал улик HCS + токен DEFPOINT + settle-агент + Scheduled (новый settlement-сервис) → Hedera: AI & Agentic Payments + No Solidity
-- Платформа (карта, ledger-панель) → сцена и live-demo-ссылка, своего баунти нет
-- Негативный сценарий (бот → отказ; спор → заморозка) → обязательная часть World, главный вау-момент всей истории
+**What 0G does in this system.** 0G is the compute layer for the AI models. Both vision agents
+(A and B) are calls to models hosted on 0G Compute — not OpenAI, not local. The substantive
+reason for 0G: inference can execute inside a TEE (a hardware enclave), meaning the verdict is
+produced in an environment controlled neither by us nor by the party receiving the money, with
+cryptographic backing for that claim.
 
-## Слоты на форме (правило: максимум 3 партнёра, треки одного партнёра = один слот)
+**Proof of 0G Compute inference.** Every request to the router returns a request id plus 0G's
+own `x_0g_trace` object (request id, provider address, billing); the console Activity page
+shows the account's consumption. Captured artifacts: raw JSON responses with request ids in
+the README, and the console screenshot in [`evidence/0g-activity-console.png`](./evidence/0g-activity-console.png)
+whose provider address matches the trace objects in the responses.
 
-- Слот 1: Hedera — оба трека (AI & Agentic + No Solidity), не конкурируют, дропать один — потерять деньги бесплатно
-- Слот 2: 0G — Best AI Product
-- Слот 3: World — AgentKit + столько бета-треков (Selfie, Identity), сколько реально интегрируем с их обязательными feedback-доками; не успеваем бету — слот остаётся за AgentKit
+**TEE trust mode.** API keys on 0G carry a trust mode (Standard / Verified / Private). The
+inference key used by the platform is a **Private (TEE)** key, wired as the priority key in
+`platform/server/src/config.ts` — so "TEE-sealed inference" describes the actual runs, not an
+aspiration.
 
-Ровно три слота, люфта нет: добавить любого четвёртого спонсора = выкинуть одного из этих.
+**Contract deployment addresses.** No contracts are deployed by design: the whole project is
+smart-contract-free (see the Hedera "No Solidity" constraint, which applies repo-wide). The
+on-chain audit trail lives on Hedera (HTS token `0.0.9753000`, HCS topic `0.0.9753001`).
+Minting Agentic IDs for Agents A and B (0G's on-chain agent identity NFT) is an optional
+future addition, relevant only for Agentic-ID-based projects.
+
+**Privacy and verifiability at the same time.** Normally one chooses: either the data is
+secret (then nobody can verify a downing was real) or everything is public and verifiable
+(then sensitive military data leaks). Here both hold, because three things are separated:
+
+- *Raw imagery* (drone frames, strike photos) is never public — it stays in our database, not
+  on a CDN, not on a blockchain.
+- *Processing* happens inside the TEE enclave on 0G. Nobody sees the image — including us and
+  the 0G operator. It is not stored there; it goes in, is processed, and only a text verdict
+  comes out.
+- *On-chain (Hedera HCS)* goes only the image hash + the verdict. A hash is a one-way
+  fingerprint from which the image cannot be reconstructed. Any auditor on HashScan sees
+  "verdict Shahed 0.97, photo hash so-and-so", can verify nothing was backdated — and never
+  gains access to a single pixel.
+
+**Track: Best AI Product** — an end-user product (not tooling), with inference demonstrably on
+0G Compute and proof artifacts included.
+
+---
+
+## Hedera: what it does here and how the track requirements are met
+
+**Two native services plus Mirror Node, zero smart contracts.**
+
+**HCS (Consensus Service) — the evidence journal.** Not a contract: a "submit a message, get a
+consensus timestamp" service. The settlement service writes each engagement's records in
+order: engagement opened → report photo hash → Agent A verdict → post-strike photo hash →
+Agent B verdict → payout receipt. The network sets the timestamps, so nothing can be rewritten
+or inserted after the fact — exactly the "nobody drew up a downing with yesterday's date"
+guarantee the paper process lacks. Any auditor can replay the whole history on HashScan or via
+the public Mirror Node REST API.
+
+**HTS (Token Service) — the money itself.** The DEFPOINT token = e-points. Also without a
+contract: token creation, transfers, and three protocol-level management keys — `kycKey`
+(only World-verified accounts can receive the token), `freezeKey` (freeze a unit's account
+during a dispute), `pauseKey` (emergency stop of the whole program). Compliance that other
+chains implement in contracts is a set of flags at token creation here.
+
+**The settle-agent — the agent that watches and pays.** Implemented directly on the Hedera
+JavaScript SDK (`@hashgraph/sdk`). It runs per engagement: when an engagement completes, it
+reads the evidence via Mirror Node, applies the government-level rule ("A: threat ≥95%, B:
+destruction confirmed → transfer N DEFPOINT by tariff"), verifies human-backing (World
+AgentKit authorization), and executes the treasury → unit transfer itself — no human approves
+the transfer. The moment an AI agent autonomously moves value is the core of the track.
+
+**Wallets.** Each unit has its own Hedera account, created automatically at onboarding, with a
+KYC grant attached after World verification. For the demo the settlement service custodies
+unit keys; a custodial provider or unit-held keys is the production path.
+
+**Scheduled Transactions.** Designed for the contractor economy (a protected facility paying
+weekly, executed natively by the network without cron bots) — not implemented in the hackathon
+build; future work.
+
+**Hedera tracks this addresses:**
+- *AI & Agentic Payments* — an AI agent executes token operations on Testnet autonomously,
+  using the Hedera SDK; the README documents the payment flow with HashScan links. The token's
+  KYC/freeze controls and the HCS audit trail are implemented; HCS-14 agent IDs and x402
+  micropayments are future work.
+- *No Solidity Allowed* — the same build qualifies by construction: SDK-only, three native
+  services in active use (HTS + HCS + Mirror Node), and zero `.sol` files anywhere in the
+  repository. This constraint applies to the whole project, including the 0G side.
+
+---
+
+## Summary: component → function → track
+
+- Three verification tiers + AgentKit binding of agents to humans (`app/`) → World: AgentKit +
+  Selfie Check Beta (+ Identity Check as the designed document tier)
+- Agent A (threat?) and Agent B (destroyed?) on 0G Compute (`verification/`,
+  `platform/server/src/verification/`) → 0G: Best AI Product
+- HCS evidence journal + DEFPOINT token + settle-agent (`platform/server/src/hedera/`) →
+  Hedera: AI & Agentic Payments + No Solidity Allowed
+- Platform (map, Settlement and Government consoles) → the stage and the live demo link
+- Negative scenarios (bot → refusal; dispute → freeze + adjudication) → required World demo
+  moment, and the clearest illustration that the human-backing check genuinely gates money
+
+## Submission slots
+
+Event rule: at most 3 partner prizes on the form; multiple tracks of the same partner count as
+one. Submitted: **Hedera** (AI & Agentic Payments + No Solidity Allowed), **0G** (Best AI
+Product), **World** (AgentKit New Use Cases + Selfie Check Beta).

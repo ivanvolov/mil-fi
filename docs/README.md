@@ -15,7 +15,7 @@ MilFi turns Ukraine's counter-UAV "points-for-kills" incentive system into an on
 - `platform/` — the working web application: air-defense orchestration for interceptors, threats, crews, and layers (React + Fastify + MongoDB), plus the settlement backend and Settlement Console. This is the operational tool our units already use; the hackathon work plugs into it.
 - `app/` — World identity app: verification tiers (Selfie / Identity / Orb), AgentKit human-backing for agents, payout authorization.
 - `verification/` — 0G Compute vision-inference harness for the verification agents (threat ID / kill confirm).
-- `docs/` — this folder: vision, the primary plan, interfaces, bounty texts, and submission strategy.
+- `docs/` — this folder: vision, the primary plan, interfaces, bounty texts, and the submission checklist.
 
 ## One-paragraph pitch
 

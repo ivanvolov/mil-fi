@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"> teams
-<title>HOC — Tactical Map</title>
+<title>MilFi — Tactical Map</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -158,7 +158,7 @@
 
   <!-- TOP STRIP -->
   <header class="h-12 border-b border-line flex items-center gap-5 px-5 panel shrink-0">
-    <div class="text-lg font-bold tracking-[0.25em]">HOC</div>
+    <div class="text-lg font-bold tracking-[0.25em]">MilFi</div>
 
     <div class="flex items-center gap-2">
       <span class="text-secondary uppercase-label text-[10px]">Mission</span>
@@ -356,7 +356,7 @@
         [49.186000, 24.760000],
       ],
       targetName: 'OUT OF SECTOR · NOT ASSIGNED',
-      note: 'Crosses south edge of sector below the engage perimeter — handed off to neighboring sector. No HOC assets committed.',
+      note: 'Crosses south edge of sector below the engage perimeter — handed off to neighboring sector. No MilFi assets committed.',
     },
   ];
 
@@ -1170,7 +1170,7 @@
 
   function copyPositions() {
     const text = buildPositionsText();
-    console.log('=== HOC positions ===\n' + text);
+    console.log('=== MilFi positions ===\n' + text);
     const done = (ok) => flashToast(ok ? 'positions copied to clipboard' : 'clipboard blocked — see console (⌥⌘I)');
 
     if (navigator.clipboard && navigator.clipboard.writeText) {

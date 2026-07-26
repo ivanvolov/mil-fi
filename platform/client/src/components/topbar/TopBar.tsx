@@ -33,7 +33,7 @@ export function TopBar({ layer }: { layer: Layer }) {
 
   return (
     <header className="h-12 border-b border-line bg-panel flex items-center gap-3 px-5 shrink-0">
-      <div className="text-lg font-bold tracking-[0.25em]">HOC</div>
+      <div className="text-lg font-bold tracking-[0.25em]">MilFi</div>
 
       <LayerSwitcher />
 

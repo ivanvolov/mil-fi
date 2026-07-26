@@ -4,12 +4,14 @@
 
 A civilian spotter reports a threat → a 0G-hosted vision agent judges whether it's real → a
 defense unit intercepts it → a second 0G agent judges the intercept from post-strike imagery.
-Every hash and verdict is written to an immutable Hedera Consensus Service log, and a Hedera
-Agent Kit settle-agent reads that log and autonomously transfers DEFPOINT tokens to the unit's
-Hedera account — seconds, not months. Before paying, the settle-agent asks World's AgentKit
+Every hash and verdict is written to an immutable Hedera Consensus Service log, and a
+settle-agent built on the Hedera SDK reads that log and autonomously transfers DEFPOINT tokens
+to the unit's Hedera account — seconds, not months. Before paying, the settle-agent asks World's AgentKit
 whether the paying agent is backed by a real, unique, verified human; if not, the payout is
 refused. It sits on top of an air-defense coordination map we already run operationally at our
 own counter-UAV contracting company in Ukraine.
+
+**Live demo:** https://mil-fi.onrender.com
 
 Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs) — start at
 [`docs/01-story.md`](./docs/01-story.md).
@@ -24,10 +26,10 @@ Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs)
 | 0G | Inference actually runs on 0G Compute | ✅ Done | Real router calls, not OpenAI — [0G section](#0g-compute--verification-agents) |
 | 0G | TEE-sealed inference | ✅ Done (as of this run) | `OG_API_KEY_TEE` (Private trust mode) now wired as the priority key in `platform/server/src/config.ts` |
 | 0G | Proof-of-inference artifact | ✅ Done | Console screenshot + request/trace ids, see below |
-| 0G | Agentic ID / contract address | ❌ Not done | No on-chain agent identity minted yet |
+| 0G | Contract addresses | N/A by design | No contracts deployed — the whole project is smart-contract-free (No-Solidity constraint); the on-chain trail is Hedera (HTS `0.0.9753000`, HCS `0.0.9753001`). Agentic ID is only required for Agentic-ID projects, which this is not |
 | World | AgentKit gates payout, negative case works | ✅ Done | Agent registered in AgentBook on World Chain ([tx](https://worldscan.org/tx/0xb9ec0636ab16b11ab7e40d08eda9761af1262282ed4f5085ed51de982bdff3dc)) + 402/403/authorized smoke — [World section](#world-agentkit--human-backed-payout-authorization) below |
 | World | Selfie/Identity Beta feedback doc | ✅ Done | [`docs/world-feedback.md`](./docs/world-feedback.md) — Selfie + AgentKit sections |
-| All | Video (2:00–2:59) | ❌ Not done | Not started |
+| All | Video (2:00–2:59) | ✅ Done | Submitted with the ETHGlobal form |
 
 ## Repo layout
 
@@ -43,9 +45,10 @@ Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs)
 
 ## Payment flow — live, verifiable on Hedera testnet
 
-The settle-agent is an autonomous loop (Hedera Agent Kit), not an HTTP handler: it reads the
-evidence topic via Mirror Node, applies the payout rule, checks World human-backing, and fires
-the HTS transfer itself.
+The settle-agent is built directly on the Hedera SDK (`@hashgraph/sdk`) — no Solidity, no
+smart contracts. When an engagement completes, it reads the evidence journal via Mirror Node,
+applies the government-set payout rule, checks World human-backing, and fires the HTS transfer
+itself — no human approves the transfer.
 
 Everything below is a **real testnet run**, not a mock — click through and check it yourself:
 
@@ -157,9 +160,12 @@ Unlike Hedera, 0G Compute has no public, permissionless explorer for router requ
 console screenshot + trace ids above are 0G's own accepted proof-of-inference format for this
 kind of submission, not a self-serve link a judge can independently query.
 
-**Open item:** no Agentic ID minted yet for Agent A/B (0G's on-chain agent identity, needed for
-the "contract deployment address" submission field) — tracked in
-[`docs/05-submission-checklist.md`](./docs/05-submission-checklist.md).
+**On contract addresses:** no contracts are deployed by design — the project is
+smart-contract-free end to end (the No-Solidity constraint applies repo-wide). The on-chain
+audit trail lives on Hedera (HTS `0.0.9753000`, HCS `0.0.9753001`). 0G's Agentic ID (an
+on-chain agent identity NFT) is only a requirement for Agentic-ID-based projects; minting IDs
+for Agent A/B is listed as future work in
+[`docs/03-architecture-bounty-map.md`](./docs/03-architecture-bounty-map.md).
 
 ## AI-tool attribution
 

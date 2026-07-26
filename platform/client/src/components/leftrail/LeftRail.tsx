@@ -14,8 +14,8 @@ import { LauncherCreateDialog } from '../dialogs/LauncherCreateDialog';
 import { ThreatSimulatorDialog } from '../dialogs/ThreatSimulatorDialog';
 import { AssetManagerDialog } from '../dialogs/AssetManagerDialog';
 
-/** The 6 steps of one engagement, per docs/03-architecture-bounty-map.md ("Поток одного
- *  сбития"). Each button jumps to the workspace where that step actually runs:
+/** The 6 steps of one engagement, per docs/03-architecture-bounty-map.md ("One engagement,
+ *  step by step"). Each button jumps to the workspace where that step actually runs:
  *  spotting on /spotter, everything else in the settlement console (`to`).
  *  `roles` = who sees the button. Agent/settle steps are autonomous pipeline stages —
  *  military/government meet them as verdict cards + ledger entries over there. */

@@ -18,9 +18,10 @@ export async function registerLayerRoutes(app: FastifyInstance, c: Collections) 
   // GET /layers[?kind=sector]
   //   No `kind` param: returns everything (unchanged behavior for legacy callers).
   //   With `kind=sector`: sectors + legacy rows with no `kind` (backfill runs at boot).
+  //   Hidden layers are always excluded — they stay reachable via /layers/:slug/full.
   app.get<{ Querystring: { kind?: string } }>('/layers', async (req) => {
     const kindRaw = req.query?.kind;
-    const base: Record<string, unknown> = { deletedAt: null };
+    const base: Record<string, unknown> = { deletedAt: null, hidden: { $ne: true } };
     let filter: Record<string, unknown> = base;
     if (kindRaw !== undefined) {
       LayerKind.parse(kindRaw); // validate — 'sector' is the only valid kind

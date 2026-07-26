@@ -735,7 +735,7 @@ function SandboxInspector({
 function SandboxTopBar() {
   return (
     <header className="h-12 border-b border-line bg-panel flex items-center gap-3 px-5 shrink-0">
-      <div className="text-lg font-bold tracking-[0.25em]">HOC</div>
+      <div className="text-lg font-bold tracking-[0.25em]">MilFi</div>
       <span className="text-[10px] font-mono uppercase tracking-wider text-muted">/ Sandbox · single intercept</span>
       <div className="flex-1" />
     </header>

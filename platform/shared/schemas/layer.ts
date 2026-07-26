@@ -12,6 +12,9 @@ export const LayerBody = z.object({
   mapZoom: z.number().int().min(1).max(20),
   isActive: z.boolean(),
   kind: LayerKind,
+  /** Hidden sectors are kept in the DB and reachable by direct slug URL, but
+   *  excluded from GET /layers listings (and therefore the sector switcher). */
+  hidden: z.boolean().optional(),
 });
 
 export const Layer = z.object({ ...baseFields }).and(LayerBody);
