@@ -13,6 +13,7 @@
     "lint": "prettier --check . --ignore-path ../../.prettierignore"
   },
   "dependencies": {
+    "@worldcoin/agentkit": "^0.2.0",
     "@worldcoin/idkit": "^4.1.2",
     "@worldcoin/mini-apps-ui-kit-react": "^1.0.2",
     "@worldcoin/minikit-js": "^2.0.3",

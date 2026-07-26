@@ -34,7 +34,7 @@ the signature and moves the money. **Your side never has to understand World ID.
 
 ```http
 POST /api/authorize-payout
-X-Agentkit: <AgentKit signature headers, added automatically by createAgentkitClient>
+agentkit: <base64 SIWE payload + signature, added automatically by createAgentkitClient>
 Content-Type: application/json
 
 {

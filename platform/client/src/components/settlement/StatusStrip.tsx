@@ -45,15 +45,22 @@ export function StatusStrip() {
       )}
       <button
         type="button"
-        onClick={() => setDemoMode(!demoMode)}
-        title={demoMode ? 'Demo mode ON — seeded data, no backend calls' : 'Switch to seeded demo data (no backend needed)'}
-        className={`px-2 py-0.5 border uppercase tracking-wider text-[9px] ${
+        onClick={() => {
+          if (demoMode) return setDemoMode(false);
+          // Enabling demo mode replaces every settlement view with scripted mock
+          // data. Make that an explicit choice, never an accidental click.
+          if (window.confirm('Switch to DEMO MODE?\n\nEvery settlement view will show scripted mock data. Nothing will be written to Hedera and no 0G inference will run. A red banner will mark the whole surface as fake.')) {
+            setDemoMode(true);
+          }
+        }}
+        title={demoMode ? 'Demo mode ON — scripted data, no Hedera/0G calls' : 'Switch to scripted demo data (no backend needed)'}
+        className={`px-2 py-0.5 border uppercase tracking-wider text-[9px] font-bold ${
           demoMode
-            ? 'border-amber text-amber bg-amber/10'
+            ? 'border-red text-white bg-red'
             : 'border-line text-muted hover:border-amber hover:text-amber'
         }`}
       >
-        {demoMode ? 'DEMO MODE' : 'LIVE'}
+        {demoMode ? '● DEMO MODE' : 'LIVE'}
       </button>
     </div>
   );

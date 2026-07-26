@@ -68,6 +68,12 @@ export const config = {
     // reusing it avoids provisioning a second RP under deadline pressure.
     rpSigningKey: optional('RP_SIGNING_KEY'),
     rpId: optional('RP_ID'),
+    // The claim-agent's AgentKit identity key (EVM, holds no funds — signs the
+    // SIWE challenge on authorize-payout). Register its address once in
+    // AgentBook: `npx @worldcoin/agentkit-cli register <address>`.
+    agentWalletKey: optional('AGENT_WALLET_KEY'),
+    // CAIP-2 chain the agent signs on; AgentBook lives on World Chain mainnet.
+    agentChainId: process.env.AGENT_CHAIN_ID ?? 'eip155:480',
   },
 
   // 0G Compute router (OpenAI-compatible). Hosts the vision agents (A + B).

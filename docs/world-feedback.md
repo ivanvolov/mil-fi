@@ -1,4 +1,4 @@
-# World Feedback — Selfie Check Beta Testing Documentation
+# World Feedback — Selfie Check Beta + AgentKit Testing Documentation
 
 Project: **MilFi** — defense-tasking platform where payouts are released only to verified humans.
 Selfie Check is used as the entry-level clearance tier (BASIC) in a three-tier trust ladder
@@ -129,3 +129,54 @@ Tested with non-technical users (founder + test users) on real phones via World 
   **the concept is right, the reliability and error messaging are not shippable yet.**
   Fix the failure feedback and we would keep Selfie Check as our entry tier without
   hesitation.
+
+---
+
+## 3. AgentKit — developer feedback
+
+Context: we use AgentKit to gate **treasury payouts** — a claim-agent files payout claims
+for a military unit, and the service refuses to sign an authorization unless the caller
+proves it is a registered, human-backed agent (AgentBook lookup on World Chain).
+
+### Integration experience & time-to-integrate
+
+- **~half a day** from zero to a passing end-to-end smoke (bot → 402, unregistered
+  signer → 403 `not_human_backed`, registered/dev-stub agent → signed authorization),
+  with an AI coding agent doing the work. Most of that time went into discovering the
+  protocol from the package internals rather than the docs.
+- The layering of `@worldcoin/agentkit` is genuinely good: the x402/Hono middleware sits
+  on top of exported **core primitives** (`parseAgentkitHeader`, `validateAgentkitMessage`,
+  `verifyAgentkitSignature`, `createAgentBookVerifier`). We don't run Hono — our verifier
+  is a Next.js route handler — and the primitives made that a clean ~150-line integration
+  instead of a framework fight. Keep exporting the core.
+
+### Where the docs got in the way
+
+1. **The integrate guide only shows the Hono + x402 middleware path.** Anyone on Next.js /
+   Express / Fastify has to reverse-engineer the flow from `dist/`. A "verify an AgentKit
+   header yourself in any framework" page — parse → validate → verify → `lookupHuman` —
+   would have cut our integration time in half.
+2. **The wire protocol is undocumented.** That the header is literally named `agentkit`
+   (base64 JSON: SIWE fields + signature), and that the challenge travels as
+   `extensions.agentkit` inside an x402 402 response, we learned by reading the shipped
+   JS. Documenting the header and the 402 envelope would make the client SDK optional
+   (curl-able, testable, portable to other languages).
+3. **No staging/simulator path for registration.** `agentkit-cli register` needs a real
+   World App tap. Our team's World logins were flaky all weekend (see Selfie section), so
+   we had to build a clearly-labelled `dev-stub` bypass to rehearse the happy path — code
+   we'll delete the moment registration succeeds, but code the SDK could have shipped as
+   a documented test mode (e.g. a testnet AgentBook we can register against headlessly).
+4. **Serverless caveat is unstated.** The challenge nonce lives server-side between the
+   402 and the retry; on serverless hosting those can hit different instances. The
+   `AgentKitStorage` interface exists for usage counters — the docs should say plainly
+   that nonce state needs it too in multi-instance deployments.
+
+### Value of the primitive
+
+- `lookupHuman(address) → anonymous humanId | null` is exactly the right shape: one call,
+  no PII, and "extra agent wallets all resolve to the same human" is precisely the
+  sybil-resistance a payout system needs. The negative case (`null` ⇒ refuse to move
+  money) fell out of the design naturally — that's the sign of a well-cut primitive.
+- Overall sentiment: **we'd keep AgentKit and expand it** (per-humanId claim dedup is our
+  next step). The gap is not the protocol, it's docs coverage for non-Hono servers and a
+  registration path that works without a healthy World App login.

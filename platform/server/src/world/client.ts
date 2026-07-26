@@ -1,5 +1,6 @@
 import { config, worldClientEnabled } from '../config.js';
 import type { PayoutAuthorization } from './auth.js';
+import { claimAgentClient } from './claimAgent.js';
 
 /**
  * Outbound calls to the World mini-app service (docs/04-integration-contract.md).
@@ -50,10 +51,15 @@ export interface PulledAuthorization {
 }
 
 /**
- * Interface 1 (pull side) — ask World to sign a payout authorization for an
- * engagement, given the operator's World identity. Returns null when World
- * refuses (bot / insufficient tier / not configured) — the settle-agent then has
- * no authorization and rejects the payout. This is the wired-up negative case.
+ * Interface 1 (pull side) — the unit's claim-agent asks World to sign a payout
+ * authorization for an engagement. The call goes through the AgentKit client:
+ * World answers 402 with a challenge, the agent signs it with its registered
+ * wallet key, and the retry carries the `agentkit` header World verifies
+ * against AgentBook. Returns null when World refuses (unregistered agent /
+ * insufficient tier / not configured) — the settle-agent then has no
+ * authorization and rejects the payout. This is the wired-up negative case:
+ * with no AGENT_WALLET_KEY (a "bot") the 402 is never answered and no
+ * authorization exists.
  */
 export async function getPayoutAuthorization(input: {
   engagementId: string;
@@ -64,7 +70,8 @@ export async function getPayoutAuthorization(input: {
 }): Promise<PulledAuthorization | null> {
   if (!worldClientEnabled) return null;
   try {
-    const res = await fetch(`${config.world.baseUrl}/api/authorize-payout`, {
+    const doFetch = claimAgentClient()?.fetch ?? fetch;
+    const res = await doFetch(`${config.world.baseUrl}/api/authorize-payout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
