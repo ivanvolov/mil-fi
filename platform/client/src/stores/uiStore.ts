@@ -100,6 +100,15 @@ interface UiStore {
   /** Per-launcher ranges + categories for the live placement preview, in launcher order. */
   assetPlan: { ranges: number[]; categories: string[] } | null;
   setAssetPlan: (p: UiStore['assetPlan']) => void;
+  // demo strike animation (ephemeral — not persisted). The button lives in LeftRail so it's
+  // always visible regardless of 2D/3D mode; bumping the request id is how it tells whichever
+  // map host is currently mounted to run the animation.
+  demoStrikeRequestId: number;
+  requestDemoStrike: () => void;
+  demoStrikePlaying: boolean;
+  setDemoStrikePlaying: (v: boolean) => void;
+  demoStrikeStatus: string | null;
+  setDemoStrikeStatus: (s: string | null) => void;
   // releases dashboard — feature flags + selected version (persisted); the pipeline queue is
   // ephemeral mock state that survives route nav but resets on reload.
   featureFlags: FeatureFlags;
@@ -219,6 +228,12 @@ export const useUiStore = create<UiStore>()(
       setAssetRadiusKm: (assetRadiusKm) => set({ assetRadiusKm }),
       assetPlan: null,
       setAssetPlan: (assetPlan) => set({ assetPlan }),
+      demoStrikeRequestId: 0,
+      requestDemoStrike: () => set((s) => ({ demoStrikeRequestId: s.demoStrikeRequestId + 1 })),
+      demoStrikePlaying: false,
+      setDemoStrikePlaying: (demoStrikePlaying) => set({ demoStrikePlaying }),
+      demoStrikeStatus: null,
+      setDemoStrikeStatus: (demoStrikeStatus) => set({ demoStrikeStatus }),
       featureFlags: { manageAssets: true },
       selectedVersionId: DEFAULT_VERSION_ID,
       selectVersion: (selectedVersionId, featureFlags) => set({ selectedVersionId, featureFlags }),

@@ -148,9 +148,14 @@ export const Console = () => {
             // Accept v3 proofs too: operators may hold older credentials, and
             // rejecting them would look like a broken app rather than a policy.
             allow_legacy_proofs
-            // Staging: adds a "use the simulator" link (simulator.worldcoin.org)
-            // to the widget, so verification is testable without a physical Orb.
-            environment="staging"
+            // NOT cosmetic: "staging" routes the request to World's staging
+            // infrastructure, which only the World ID Sandbox test build or
+            // simulator.worldcoin.org can answer — a regular World App scanning
+            // a staging QR fails with `generic_error`. Default production; set
+            // NEXT_PUBLIC_WORLD_ENV=staging only to test against the simulator.
+            environment={
+              process.env.NEXT_PUBLIC_WORLD_ENV === 'staging' ? 'staging' : 'production'
+            }
             onSuccess={onSuccess}
             onError={(code) =>
               setPhase({ name: 'error', message: `World ID error: ${code}` })

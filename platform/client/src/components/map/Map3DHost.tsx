@@ -6,15 +6,31 @@ import type { LayerFull } from '@shared/schemas/layer-full';
 import type { LatLng } from '@shared/schemas/common';
 import type { Interceptor } from '@shared/schemas/interceptor';
 import type { InterceptorType } from '@shared/schemas/interceptor-type';
+import type { Threat } from '@shared/schemas/threat';
 import { useUiStore, isSelected } from '../../stores/uiStore';
 import {
   useUpdateInterceptorPosition,
   useUpdateTeamPosition,
   useUpdateThreatGeometry,
+  useCreateThreat,
 } from '../../queries/useMutations';
 import { useOrchestrationFocus } from '../../lib/orchestrationFocus';
 import { useMe } from '../../queries/useMe';
 import { glyphHtml, threatGlyphHtml } from './glyphs';
+import { haversineKm } from '@shared/distance';
+import {
+  DEMO_STRIKE_ARM_FRACTION,
+  DEMO_STRIKE_DURATION_MS,
+  buildFlightPath,
+  buildRandomThreatBody,
+  cumulativeKm,
+  pickRandomLiveThreat,
+  pointAtFraction,
+} from './demoStrike';
+
+const FLYING_DRONE_SVG =
+  '<svg width="16" height="16" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#f59e0b" stroke="#fff7ed" stroke-width="0.75"/></svg>';
+const EXPLOSION_HTML = '<div class="hoc-explosion"></div><div class="hoc-explosion-ring"></div>';
 
 /** CARTO GL basemaps (OpenMapTiles schema, no API key).
  *  day = Voyager (full-color), night = Dark Matter (matches the app's dark UI). */
@@ -142,8 +158,18 @@ export function Map3DHost({ data }: { data: LayerFull }) {
   const { mutate: updateInterceptorPos } = useUpdateInterceptorPosition(slug);
   const { mutate: updateTeamPos } = useUpdateTeamPosition(slug);
   const { mutate: updateThreatGeom } = useUpdateThreatGeometry(slug);
+  const createThreat = useCreateThreat(slug);
 
   const focus = useOrchestrationFocus(data);
+
+  // ---------- demo strike animation (headless — button lives in LeftRail) ----------
+  const demoStrikeRunningRef = useRef(false);
+  const demoStrikeRafRef = useRef<number | null>(null);
+  const demoStrikeLastHandledRef = useRef(useUiStore.getState().demoStrikeRequestId);
+  const demoStrikeMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const demoStrikeRequestId = useUiStore((s) => s.demoStrikeRequestId);
+  const setDemoStrikePlaying = useUiStore((s) => s.setDemoStrikePlaying);
+  const setDemoStrikeStatus = useUiStore((s) => s.setDemoStrikeStatus);
 
   const typesById = useMemo(() => {
     const m = new Map<string, InterceptorType>();
@@ -678,6 +704,116 @@ export function Map3DHost({ data }: { data: LayerFull }) {
     );
     map.fitBounds(bounds, { padding: 80, maxZoom, duration: 900 });
   }, [selection, selections, selectionZoom, data]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleReady) return;
+    if (demoStrikeRequestId === demoStrikeLastHandledRef.current) return;
+    demoStrikeLastHandledRef.current = demoStrikeRequestId;
+    void runDemoStrike3D(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoStrikeRequestId, styleReady]);
+
+  async function runDemoStrike3D(map: maplibregl.Map) {
+    if (demoStrikeRunningRef.current) return;
+    demoStrikeRunningRef.current = true;
+    setDemoStrikePlaying(true);
+
+    let threat: Threat | null = pickRandomLiveThreat(data.threats);
+    if (!threat) {
+      setDemoStrikeStatus('Spawning threat…');
+      const c = map.getCenter();
+      const body = buildRandomThreatBody(data, { lat: c.lat, lng: c.lng });
+      threat = body ? await createThreat.mutateAsync({ layerId: data.layer._id, body }).catch(() => null) : null;
+      if (!threat) {
+        setDemoStrikeStatus('Could not spawn a threat — check threat types are configured');
+        setDemoStrikePlaying(false);
+        demoStrikeRunningRef.current = false;
+        window.setTimeout(() => setDemoStrikeStatus(null), 2200);
+        return;
+      }
+    }
+
+    const det = threat.geometry.detonation!;
+    const path = buildFlightPath(threat.position, { ...threat.geometry, detonation: det });
+    const cum = cumulativeKm(path);
+    const shooter = data.interceptors.length
+      ? data.interceptors.reduce((closest, i) =>
+          haversineKm(i.position, det) < haversineKm(closest.position, det) ? i : closest,
+        data.interceptors[0]!)
+      : null;
+
+    setDemoStrikeStatus(`Tracking ${threat.code}…`);
+
+    const droneEl = document.createElement('div');
+    droneEl.className = 'hoc-flying-drone';
+    droneEl.innerHTML = FLYING_DRONE_SVG;
+    const drone = new maplibregl.Marker({ element: droneEl })
+      .setLngLat([path[0]!.lng, path[0]!.lat])
+      .addTo(map);
+    demoStrikeMarkersRef.current.push(drone);
+
+    ensureGeojsonSource(map, 'hoc-demo-tracer', fc([]));
+    if (!map.getLayer('hoc-demo-tracer-line')) {
+      map.addLayer({
+        id: 'hoc-demo-tracer-line', type: 'line', source: 'hoc-demo-tracer',
+        paint: { 'line-color': '#22c55e', 'line-width': 2, 'line-dasharray': [3, 4], 'line-opacity': 0.9 },
+      });
+    }
+
+    let start: number | null = null;
+    const step = (now: number) => {
+      if (start === null) start = now;
+      const frac = Math.min(1, (now - start) / DEMO_STRIKE_DURATION_MS);
+      const pos = pointAtFraction(path, cum, frac);
+      drone.setLngLat([pos.lng, pos.lat]);
+
+      if (shooter && frac >= DEMO_STRIKE_ARM_FRACTION) {
+        ensureGeojsonSource(map, 'hoc-demo-tracer', fc([lineFeature([shooter.position, pos], {})]));
+      }
+
+      if (frac < 1) {
+        demoStrikeRafRef.current = requestAnimationFrame(step);
+        return;
+      }
+
+      drone.remove();
+      demoStrikeMarkersRef.current = demoStrikeMarkersRef.current.filter((m) => m !== drone);
+      ensureGeojsonSource(map, 'hoc-demo-tracer', fc([]));
+
+      const boomEl = document.createElement('div');
+      boomEl.className = 'hoc-explosion-marker';
+      boomEl.innerHTML = EXPLOSION_HTML;
+      const boom = new maplibregl.Marker({ element: boomEl }).setLngLat([det.lng, det.lat]).addTo(map);
+      demoStrikeMarkersRef.current.push(boom);
+      window.setTimeout(() => {
+        boom.remove();
+        demoStrikeMarkersRef.current = demoStrikeMarkersRef.current.filter((m) => m !== boom);
+      }, 900);
+
+      setDemoStrikeStatus(`${threat.code} neutralized`);
+      window.setTimeout(() => setDemoStrikeStatus(null), 2000);
+      demoStrikeRafRef.current = null;
+      demoStrikeRunningRef.current = false;
+      setDemoStrikePlaying(false);
+    };
+    demoStrikeRafRef.current = requestAnimationFrame(step);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (demoStrikeRafRef.current !== null) cancelAnimationFrame(demoStrikeRafRef.current);
+      for (const m of demoStrikeMarkersRef.current) m.remove();
+      demoStrikeMarkersRef.current = [];
+      // Unmounting mid-animation (e.g. switching back to 2D) would otherwise strand the
+      // LeftRail button permanently disabled — release the lock.
+      if (demoStrikeRunningRef.current) {
+        demoStrikeRunningRef.current = false;
+        setDemoStrikePlaying(false);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

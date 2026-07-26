@@ -81,3 +81,8 @@ services:
       # baked into the built bundle at `npm run build:all` time).
       - key: VITE_WORLD_APP_ID
         value: "app_3e54fa415d153fbd5fd72033452b27f8"
+      # staging = verification completes via the simulator link under the QR (no
+      # phone needed). Regular World App can't answer World ID 4.0 requests yet
+      # (preview) — flip to "production" once World ID 4.0 is GA in World App.
+      - key: VITE_WORLD_ENV
+        value: "staging"

@@ -203,6 +203,10 @@ export function LeftRail({ data }: { data: LayerFull }) {
   const isSpotter = role === 'spotter';
   const visibleFlowSteps = role ? FLOW_STEPS.filter((s) => s.roles.includes(role)) : [];
 
+  const requestDemoStrike = useUiStore((s) => s.requestDemoStrike);
+  const demoStrikePlaying = useUiStore((s) => s.demoStrikePlaying);
+  const demoStrikeStatus = useUiStore((s) => s.demoStrikeStatus);
+
   // Shift and ⌘/Ctrl are orthogonal modifiers: Shift = additive selection, ⌘/Ctrl = zoom.
   //   Plain click            → single-select (or deselect if the sole selected row).
   //   Shift click            → toggle in/out of the multi-selection. No map movement.
@@ -442,31 +446,50 @@ export function LeftRail({ data }: { data: LayerFull }) {
       {/* spacer: clicking the empty area below the lists clears the selection */}
       <div className="flex-1 min-h-[40px]" onClick={() => setSelection(null)} aria-label="clear selection" />
 
-      {/* Engagement flow — one button per step of docs/03-architecture-bounty-map.md.
-          Each jumps to the workspace where that step runs (hover for the full story).
-          Legacy tools (threat simulator, asset manager, orchestrate) are hidden, not removed —
-          their dialogs stay mounted below and can be re-wired if needed. */}
-      <div className="px-2 py-2 border-t border-line space-y-1.5">
-        {visibleFlowSteps.map((step) => {
-          const Icon = step.icon;
-          return (
-            <button
-              key={step.key}
-              type="button"
-              onClick={() => navigate(step.to)}
-              title={step.desc}
-              className="w-full flex items-center gap-1.5 border font-mono text-[10px] uppercase tracking-wider px-2 py-1.5 border-line hover:border-cyan text-muted hover:text-cyan"
-            >
-              <Icon size={12} className="shrink-0" />
-              <span className="flex-1 text-left">{step.label}</span>
-              <span className="text-[8px] tracking-wider" style={{ color: step.color }}>{step.partner}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Engagement flow nav (Report Threat → Evidence Ledger) hidden for the map demo —
+          it's redundant with the Sector/Spot/Settle tabs in AppRail and was cluttering the
+          sector view. Not deleted: flip `false &&` back on if it's needed again. */}
+      {false && (
+        <div className="px-2 py-2 border-t border-line space-y-1.5">
+          {visibleFlowSteps.map((step) => {
+            const Icon = step.icon;
+            return (
+              <button
+                key={step.key}
+                type="button"
+                onClick={() => navigate(step.to)}
+                title={step.desc}
+                className="w-full flex items-center gap-1.5 border font-mono text-[10px] uppercase tracking-wider px-2 py-1.5 border-line hover:border-cyan text-muted hover:text-cyan"
+              >
+                <Icon size={12} className="shrink-0" />
+                <span className="flex-1 text-left">{step.label}</span>
+                <span className="text-[8px] tracking-wider" style={{ color: step.color }}>{step.partner}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Legacy operator tools (simulate threats, manage assets, orchestrate) are hidden
-          for the bounty demo — their dialogs stay mounted below and can be re-wired if needed. */}
+      {/* Demo: one button, picks/spawns a threat and animates its intercept — works in both
+          2D and 3D (whichever map host is mounted picks up the request). Hidden for spotters,
+          same opsec rule as the rest of the air-defense picture. */}
+      {!isSpotter && (
+        <div className="px-2 py-2 border-t border-line space-y-1">
+          <button
+            type="button"
+            onClick={() => requestDemoStrike()}
+            disabled={demoStrikePlaying}
+            className="w-full border border-cyan bg-cyan/10 text-cyan font-mono text-[10px] uppercase tracking-wider px-2 py-1.5 hover:bg-cyan/20 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {demoStrikePlaying ? 'Engaging…' : '▶ Simulate intercept'}
+          </button>
+          {demoStrikeStatus && (
+            <div className="font-mono text-[9px] uppercase tracking-wider text-muted truncate">
+              {demoStrikeStatus}
+            </div>
+          )}
+        </div>
+      )}
 
       <LauncherCreateDialog
         open={launcherCreateOpen}

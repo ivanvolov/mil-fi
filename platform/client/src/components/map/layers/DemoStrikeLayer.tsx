@@ -1,89 +1,81 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { useMap } from 'react-leaflet';
+import { useParams } from 'react-router-dom';
 import type { LayerFull } from '@shared/schemas/layer-full';
-import type { LatLng } from '@shared/schemas/common';
+import type { Threat } from '@shared/schemas/threat';
 import { haversineKm } from '@shared/distance';
-import { MapCornerPanel } from '../../shared/MapCornerPanel';
-import { buttonPrimary } from '../../shared/Dialog';
+import { useUiStore } from '../../../stores/uiStore';
+import { useCreateThreat } from '../../../queries/useMutations';
+import {
+  DEMO_STRIKE_ARM_FRACTION,
+  DEMO_STRIKE_DURATION_MS,
+  buildFlightPath,
+  buildRandomThreatBody,
+  cumulativeKm,
+  pickRandomLiveThreat,
+  pointAtFraction,
+} from '../demoStrike';
 
 const FLYING_DRONE_SVG =
   '<svg width="16" height="16" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#f59e0b" stroke="#fff7ed" stroke-width="0.75"/></svg>';
 const EXPLOSION_HTML = '<div class="hoc-explosion"></div><div class="hoc-explosion-ring"></div>';
 
-const DURATION_MS = 3200;
-const ARM_FRACTION = 0.6;
-
-/** Concatenates a threat's current position + its cruise/attack legs into one flight path,
- *  ending at the detonation point, deduping near-identical adjacent points at leg boundaries. */
-function buildFlightPath(position: LatLng, geometry: { futureCruise: LatLng[] | null; futureAttack: LatLng[] | null; detonation: { lat: number; lng: number } }): LatLng[] {
-  const raw: LatLng[] = [position, ...(geometry.futureCruise ?? []), ...(geometry.futureAttack ?? []), geometry.detonation];
-  const out: LatLng[] = [];
-  for (const p of raw) {
-    const last = out[out.length - 1];
-    if (!last || haversineKm(last, p) > 0.001) out.push(p);
-  }
-  return out;
-}
-
-function cumulativeKm(pts: LatLng[]): number[] {
-  const cum = [0];
-  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1]! + haversineKm(pts[i - 1]!, pts[i]!));
-  return cum;
-}
-
-function pointAtFraction(pts: LatLng[], cum: number[], frac: number): LatLng {
-  const total = cum[cum.length - 1]!;
-  if (total <= 0) return pts[pts.length - 1]!;
-  const target = frac * total;
-  for (let i = 1; i < cum.length; i++) {
-    if (target <= cum[i]!) {
-      const segLen = cum[i]! - cum[i - 1]!;
-      const segT = segLen > 0 ? (target - cum[i - 1]!) / segLen : 0;
-      const a = pts[i - 1]!, b = pts[i]!;
-      return { lat: a.lat + (b.lat - a.lat) * segT, lng: a.lng + (b.lng - a.lng) * segT };
-    }
-  }
-  return pts[pts.length - 1]!;
-}
-
-/** Demo-only control: picks a random threat that has a detonation point and animates it
- *  flying its cruise/attack path while the nearest interceptor "tracks" it, ending in a
- *  hit effect at the detonation point. Nothing here touches persisted state. */
+/** Headless engine for the demo strike animation on the 2D (Leaflet) map. No UI of its own —
+ *  the button lives in LeftRail and drives this via `demoStrikeRequestId` in uiStore, so it
+ *  works the same way regardless of which map host is mounted. Picks a random live threat (or
+ *  spawns one near the current view if none exist), animates it flying to its detonation point
+ *  while the nearest interceptor "tracks" it, ending in a hit effect. */
 export function DemoStrikeLayer({ data }: { data: LayerFull }) {
   const map = useMap();
+  const { slug = 'vzil-1' } = useParams();
+  const createThreat = useCreateThreat(slug);
   const groupRef = useRef<L.LayerGroup | null>(null);
   const rafRef = useRef<number | null>(null);
-  const statusTimeoutRef = useRef<number | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const runningRef = useRef(false);
+  const lastHandledRef = useRef(useUiStore.getState().demoStrikeRequestId);
+
+  const requestId = useUiStore((s) => s.demoStrikeRequestId);
+  const setPlaying = useUiStore((s) => s.setDemoStrikePlaying);
+  const setStatus = useUiStore((s) => s.setDemoStrikeStatus);
 
   useEffect(() => {
     groupRef.current = L.layerGroup().addTo(map);
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      if (statusTimeoutRef.current !== null) window.clearTimeout(statusTimeoutRef.current);
       groupRef.current?.remove();
       groupRef.current = null;
+      // Unmounting mid-animation (e.g. switching to 3D) would otherwise strand the
+      // LeftRail button permanently disabled — release the lock.
+      if (runningRef.current) {
+        runningRef.current = false;
+        setPlaying(false);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map]);
 
-  function flashStatus(msg: string, ms: number) {
-    if (statusTimeoutRef.current !== null) window.clearTimeout(statusTimeoutRef.current);
-    setStatus(msg);
-    statusTimeoutRef.current = window.setTimeout(() => setStatus(null), ms);
-  }
-
-  function onStrike() {
+  async function runStrike() {
     const group = groupRef.current;
-    if (playing || !group) return;
+    if (runningRef.current || !group) return;
+    runningRef.current = true;
+    setPlaying(true);
 
-    const candidates = data.threats.filter((t) => t.geometry.detonation);
-    if (candidates.length === 0) {
-      flashStatus('No live threats — run Threat Simulator first', 2000);
-      return;
+    let threat: Threat | null = pickRandomLiveThreat(data.threats);
+    if (!threat) {
+      setStatus('Spawning threat…');
+      const center = map.getCenter();
+      const body = buildRandomThreatBody(data, { lat: center.lat, lng: center.lng });
+      threat = body ? await createThreat.mutateAsync({ layerId: data.layer._id, body }).catch(() => null) : null;
+      if (!threat) {
+        setStatus('Could not spawn a threat — check threat types are configured');
+        setPlaying(false);
+        runningRef.current = false;
+        window.setTimeout(() => setStatus(null), 2200);
+        return;
+      }
     }
-    const threat = candidates[Math.floor(Math.random() * candidates.length)]!;
+
     const det = threat.geometry.detonation!;
     const path = buildFlightPath(threat.position, { ...threat.geometry, detonation: det });
     const cum = cumulativeKm(path);
@@ -93,8 +85,7 @@ export function DemoStrikeLayer({ data }: { data: LayerFull }) {
         data.interceptors[0]!)
       : null;
 
-    setPlaying(true);
-    flashStatus(`Tracking ${threat.code}…`, DURATION_MS + 400);
+    setStatus(`Tracking ${threat.code}…`);
 
     const drone = L.marker([path[0]!.lat, path[0]!.lng], {
       icon: L.divIcon({ className: 'hoc-flying-drone', html: FLYING_DRONE_SVG, iconSize: [0, 0], iconAnchor: [0, 0] }),
@@ -110,11 +101,11 @@ export function DemoStrikeLayer({ data }: { data: LayerFull }) {
     let start: number | null = null;
     const step = (now: number) => {
       if (start === null) start = now;
-      const frac = Math.min(1, (now - start) / DURATION_MS);
+      const frac = Math.min(1, (now - start) / DEMO_STRIKE_DURATION_MS);
       const pos = pointAtFraction(path, cum, frac);
       drone.setLatLng([pos.lat, pos.lng]);
 
-      if (tracer && shooter && frac >= ARM_FRACTION) {
+      if (tracer && shooter && frac >= DEMO_STRIKE_ARM_FRACTION) {
         tracer.setLatLngs([[shooter.position.lat, shooter.position.lng], [pos.lat, pos.lng]]);
         tracer.setStyle({ opacity: 0.9 });
       }
@@ -131,25 +122,22 @@ export function DemoStrikeLayer({ data }: { data: LayerFull }) {
         interactive: false,
       }).addTo(group);
       window.setTimeout(() => group.removeLayer(boom), 900);
-      flashStatus(`${threat.code} neutralized`, 2000);
+      setStatus(`${threat.code} neutralized`);
+      window.setTimeout(() => setStatus(null), 2000);
       rafRef.current = null;
+      runningRef.current = false;
       setPlaying(false);
     };
     rafRef.current = requestAnimationFrame(step);
   }
 
-  return (
-    <MapCornerPanel style={{ left: '50%', right: 'auto', bottom: 20, transform: 'translateX(-50%)' }}>
-      <div className="flex items-center gap-2 px-3 py-2">
-        <button type="button" className={buttonPrimary} disabled={playing} onClick={onStrike}>
-          {playing ? 'Engaging…' : '▶ Simulate strike'}
-        </button>
-        {status && (
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted whitespace-nowrap">
-            {status}
-          </span>
-        )}
-      </div>
-    </MapCornerPanel>
-  );
+  useEffect(() => {
+    if (requestId !== lastHandledRef.current) {
+      lastHandledRef.current = requestId;
+      void runStrike();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
+  return null;
 }

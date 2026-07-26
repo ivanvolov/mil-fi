@@ -2,11 +2,16 @@ import {
   any,
   CredentialRequest,
   IDKitRequestWidget,
+  setDebug,
   type IDKitResult,
   type RpContext,
 } from '@worldcoin/idkit';
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+
+// Verbose IDKit logging in dev — without it every failure surfaces as an opaque
+// "generic_error" and diagnosing means digging through the minified bundle.
+if (import.meta.env.DEV) setDebug(true);
 
 /**
  * One-time World ID identity confirmation, shown once per account (never for admin)
@@ -25,6 +30,24 @@ const VERIFICATION_OPTIONS = any(
 const ACTION = 'test-action';
 
 const WORLD_APP_ID = import.meta.env.VITE_WORLD_APP_ID as `app_${string}` | undefined;
+
+/**
+ * Which World ID backend the QR points at. NOT cosmetic — this decides who can
+ * answer the request:
+ *   - "production": only the production World App. As of July 2026 World ID 4.0 is
+ *     "preview for early adopters" and Selfie Check is sandbox-only per the docs
+ *     (docs.world.org/world-id/sandbox/testing-selfie-check), so a regular phone
+ *     with no credentials fails with `generic_error`.
+ *   - "staging": the World ID Sandbox test build or simulator.worldcoin.org (the
+ *     widget shows a "Testing in staging?" link — completes in a browser tab, no
+ *     phone needed). This is the mode that works for the demo TODAY.
+ * The server verify API accepts both; the proof carries its `environment` field.
+ * Set via VITE_WORLD_ENV (repo-root .env sets staging); flip to production once
+ * World ID 4.0 is generally available in World App.
+ */
+const WORLD_ENV = (['production', 'staging', 'sandbox'] as const).find(
+  (e) => e === import.meta.env.VITE_WORLD_ENV,
+) ?? 'production';
 
 type Phase =
   | { name: 'idle' }
@@ -129,7 +152,9 @@ export function WorldVerifyGate() {
         {phase.name === 'scanning' && WORLD_APP_ID && (
           <>
             <p className="text-sm text-[#8b949e]">
-              Scan with your phone, then choose how you want to verify.
+              {WORLD_ENV === 'staging'
+                ? 'Click the "Testing in staging?" simulator link under the QR — it completes in a browser tab, no phone needed. Pick Selfie, Passport, or Orb there.'
+                : 'Scan with your phone, then choose how you want to verify.'}
             </p>
             <IDKitRequestWidget
               open
@@ -141,9 +166,7 @@ export function WorldVerifyGate() {
               rp_context={phase.rpContext}
               constraints={VERIFICATION_OPTIONS}
               allow_legacy_proofs
-              // Staging adds a "use the simulator" link (simulator.worldcoin.org), so this
-              // is testable without a physical Orb/passport.
-              environment="staging"
+              environment={WORLD_ENV}
               onSuccess={onSuccess}
               onError={(code) =>
                 setPhase({ name: 'error', message: `World ID error: ${code}` })
