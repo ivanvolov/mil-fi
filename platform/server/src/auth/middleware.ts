@@ -64,9 +64,16 @@ export async function requireRoleForWrite(req: FastifyRequest, reply: FastifyRep
   if (!WRITE_METHODS.has(req.method)) return;
 
   const url = req.url.split('?')[0] ?? '';
+  const isResolve =
+    url.startsWith('/api/v1/settlement/engagements/') && url.endsWith('/resolve');
   const allowed =
-    (role === 'military' && req.method === 'POST' && url.startsWith('/api/v1/settlement/engagements')) ||
+    // Military files engagements (incl. the /stream variant) + onboards its unit.
+    (role === 'military' && req.method === 'POST' && url.startsWith('/api/v1/settlement/engagements') && !isResolve) ||
     (role === 'military' && req.method === 'POST' && url === '/api/v1/settlement/onboard') ||
+    // Government sets policy and resolves disputes.
+    (role === 'government' && req.method === 'PUT' && url === '/api/v1/settlement/rule') ||
+    (role === 'government' && req.method === 'POST' && isResolve) ||
+    // Spotters file sightings.
     (role === 'spotter' && req.method === 'POST' && url === '/api/v1/settlement/spots');
   if (allowed) return;
 

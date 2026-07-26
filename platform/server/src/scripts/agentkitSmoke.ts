@@ -89,6 +89,9 @@ async function main(): Promise<void> {
     });
     if (pulled) {
       console.log(`  AUTHORIZED humanId=${pulled.authorization.humanId} sig=${pulled.signature.slice(0, 18)}…`);
+      if (pulled.agent) {
+        console.log(`  agent=${pulled.agent.address} backing=${pulled.agent.backing} agentBookHuman=${pulled.agent.humanId}`);
+      }
       console.log('  expected: authorization when the address is AgentBook-registered or dev-stub listed\n');
     } else {
       console.log('  REFUSED (null) — agent not registered/listed, or World service unreachable\n');

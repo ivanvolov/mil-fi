@@ -48,6 +48,9 @@ export async function postEngagementVerdict(v: EngagementVerdict): Promise<World
 export interface PulledAuthorization {
   authorization: PayoutAuthorization;
   signature: string;
+  /** The AgentKit identity World verified: which wallet claimed, which human
+   * backs it (AgentBook lookup), and whether backing was real or a dev stub. */
+  agent?: { address: string; humanId: string; backing: 'agentbook' | 'dev-stub' };
 }
 
 /**
@@ -81,7 +84,9 @@ export async function getPayoutAuthorization(input: {
     });
     if (!res.ok) return null; // 403 not_human_backed / insufficient_tier
     const body = (await res.json()) as { authorized?: boolean } & PulledAuthorization;
-    return body.authorized ? { authorization: body.authorization, signature: body.signature } : null;
+    return body.authorized
+      ? { authorization: body.authorization, signature: body.signature, agent: body.agent }
+      : null;
   } catch {
     return null;
   }

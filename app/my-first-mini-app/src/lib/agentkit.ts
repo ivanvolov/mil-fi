@@ -6,7 +6,7 @@ import {
   validateAgentkitMessage,
   verifyAgentkitSignature,
 } from '@worldcoin/agentkit';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { NextRequest } from 'next/server';
 
 /**
@@ -32,17 +32,46 @@ const RPC_URL = process.env.AGENTKIT_RPC_URL || undefined;
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 /**
- * Nonces we issued in 402 challenges, awaiting their signed retry. Single-use:
- * consumed on verification, so a captured header cannot be replayed. In-memory
- * is a documented demo limitation — one server process, lost on restart (the
- * client just gets a fresh 402 and re-signs).
+ * Challenge nonces are STATELESS: `expiresAtMs.random.hmac(expiresAtMs.random)`.
+ * Any instance can verify a nonce it didn't issue — required on serverless
+ * (Vercel), where the 402 challenge and the signed retry routinely land on
+ * different lambdas and an in-memory issued-set would reject every retry.
+ * Replay defence: nonces expire with the challenge TTL, and each instance
+ * additionally remembers nonces it has already accepted (best-effort dedup;
+ * cross-instance replay within the TTL is a documented demo limitation).
  */
-const issuedNonces = new Map<string, number>();
+const nonceSecret =
+  process.env.HMAC_SECRET_KEY || process.env.AUTH_SECRET || randomBytes(32).toString('hex');
 
-function pruneNonces(now: number): void {
-  for (const [nonce, expiresAt] of issuedNonces) {
-    if (expiresAt <= now) issuedNonces.delete(nonce);
+const usedNonces = new Map<string, number>();
+
+function nonceMac(body: string): string {
+  return createHmac('sha256', nonceSecret).update(body).digest('hex').slice(0, 32);
+}
+
+/** Nonce layout (hex only — SIWE requires alphanumeric nonces): 12-char hex
+ * expiry (epoch ms) + 24-char hex random + 32-char hex HMAC. */
+function issueNonce(now: number): string {
+  const body =
+    (now + CHALLENGE_TTL_MS).toString(16).padStart(12, '0') + randomBytes(12).toString('hex');
+  return body + nonceMac(body);
+}
+
+function consumeNonce(nonce: string): boolean {
+  const now = Date.now();
+  for (const [used, expiresAt] of usedNonces) {
+    if (expiresAt <= now) usedNonces.delete(used);
   }
+  if (nonce.length !== 68) return false;
+  const body = nonce.slice(0, 36);
+  const mac = nonce.slice(36);
+  const expiresAt = parseInt(body.slice(0, 12), 16);
+  if (!Number.isFinite(expiresAt) || expiresAt <= now) return false;
+  const expected = nonceMac(body);
+  if (!timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return false;
+  if (usedNonces.has(nonce)) return false; // per-instance replay guard
+  usedNonces.set(nonce, expiresAt);
+  return true;
 }
 
 /**
@@ -66,9 +95,7 @@ export function resourceUriFor(req: NextRequest): string {
  */
 export function agentkitChallenge(resourceUri: string): Record<string, unknown> {
   const now = Date.now();
-  pruneNonces(now);
-  const nonce = randomBytes(16).toString('hex');
-  issuedNonces.set(nonce, now + CHALLENGE_TTL_MS);
+  const nonce = issueNonce(now);
   return {
     x402Version: 2,
     error: 'agentkit_signature_required',
@@ -120,12 +147,7 @@ export async function verifyAgentkitRequest(
   }
 
   const validation = await validateAgentkitMessage(payload, resourceUri, {
-    checkNonce: (nonce) => {
-      const expiresAt = issuedNonces.get(nonce);
-      if (expiresAt === undefined || expiresAt <= Date.now()) return false;
-      issuedNonces.delete(nonce); // single-use
-      return true;
-    },
+    checkNonce: consumeNonce,
   });
   if (!validation.valid) {
     return { ok: false, error: 'invalid_agentkit_message', detail: validation.error };

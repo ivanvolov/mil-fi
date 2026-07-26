@@ -4,6 +4,7 @@ import { runAgentA, runAgentB, type ImageInput } from '../verification/agents.js
 import { evidence, submitEvidence } from '../hedera/journal.js';
 import { createUnitAccount, associateAndGrantKyc } from '../hedera/token.js';
 import { settleEngagement, type SettlementRule } from '../hedera/settle.js';
+import { loadActiveRule } from './settlementRule.js';
 import { postEngagementVerdict, getPayoutAuthorization } from '../world/client.js';
 import type { PayoutAuthorization } from '../world/auth.js';
 import { hederaEnabled, worldClientEnabled } from '../config.js';
@@ -73,6 +74,18 @@ export async function onboardUnit(c: Collections, input: OnboardInput): Promise<
   return doc;
 }
 
+/**
+ * A single real pipeline step, emitted the moment its underlying await resolves.
+ * The streaming route forwards these verbatim so the UI lights up on genuine
+ * completion — no estimated timers. Each carries the same data the final doc does.
+ */
+export type EngagementStepEvent =
+  | { step: 'report'; engagementId: string; imageHash: string; coords: { lat: number; lon: number } | null; time: string; journal: unknown }
+  | { step: 'agent_a'; agentA: { verdict: unknown; requestId?: string; model: string; imageHash: string; latencyMs: number; journal: unknown } }
+  | { step: 'downing'; downing: { journal: unknown } }
+  | { step: 'agent_b'; agentB: { verdict: unknown; requestId?: string; model: string; imageHash: string; latencyMs: number; journal: unknown } }
+  | { step: 'settled'; settlement: unknown };
+
 export interface RunEngagementInput {
   unitId: string;
   reportImage: ImageInput;
@@ -86,6 +99,9 @@ export interface RunEngagementInput {
   signature?: string;
   /** Operator's World nullifier, reported to World in the verdict (Interface 3). */
   operatorNullifier?: string;
+  /** Optional progress sink. Called after each real step completes so a streaming
+   * caller can surface genuine per-step timing instead of estimated animations. */
+  onStep?: (ev: EngagementStepEvent) => void;
 }
 
 export async function runEngagement(c: Collections, input: RunEngagementInput) {
@@ -94,6 +110,9 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
 
   const engagementId = `eng-${crypto.randomBytes(5).toString('hex')}`;
   const now = new Date().toISOString();
+  const emit = (ev: EngagementStepEvent) => {
+    try { input.onStep?.(ev); } catch { /* a dead stream must never break settlement */ }
+  };
 
   // Step 1 — report. Agent A resolves the hash; journal the report with it.
   const a = await runAgentA(input.reportImage);
@@ -105,6 +124,7 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
       time: input.time ?? now,
     }),
   );
+  emit({ step: 'report', engagementId, imageHash: a.imageHash, coords: input.coords ?? null, time: input.time ?? now, journal: reportJournal });
   const aJournal = await submitEvidence(
     evidence('verdict_a', engagementId, {
       imageHash: a.imageHash,
@@ -113,11 +133,13 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
       model: a.model,
     }),
   );
+  emit({ step: 'agent_a', agentA: { verdict: a.verdict, requestId: a.requestId, model: a.model, imageHash: a.imageHash, latencyMs: a.latencyMs, journal: aJournal } });
 
   // Step 3 — downing.
   const downingJournal = await submitEvidence(
     evidence('downing', engagementId, { unitId: unit._id, time: input.time ?? now }),
   );
+  emit({ step: 'downing', downing: { journal: downingJournal } });
 
   // Step 4 — Agent B, told what A saw.
   const b = await runAgentB(input.postImage, a.verdict);
@@ -129,6 +151,7 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
       model: b.model,
     }),
   );
+  emit({ step: 'agent_b', agentB: { verdict: b.verdict, requestId: b.requestId, model: b.model, imageHash: b.imageHash, latencyMs: b.latencyMs, journal: bJournal } });
 
   // Step 5b — Interface 3: report the verdict to World. When both flags are true,
   // the operator's agent may autonomously pull a payout authorization.
@@ -146,6 +169,7 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
   // request wins (e.g. operator pulled it themselves).
   let authorization = input.authorization;
   let signature = input.signature;
+  let claimAgent: { address: string; humanId: string; backing: 'agentbook' | 'dev-stub' } | undefined;
   if (!authorization && worldClientEnabled && unit.worldNullifier) {
     const pulled = await getPayoutAuthorization({
       engagementId,
@@ -156,20 +180,26 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     if (pulled) {
       authorization = pulled.authorization;
       signature = pulled.signature;
+      claimAgent = pulled.agent;
     }
   }
 
   // Step 6 — settle-agent decides + acts (also journals payout/freeze/reject).
+  // An explicit per-request rule wins; otherwise the persisted government policy
+  // (tariffs + thresholds set in the Government window) governs the payout.
+  const rule = input.rule ?? (await loadActiveRule(c));
   const settlement = await settleEngagement({
     engagementId,
     unitAccountId: unit.hederaAccountId ?? 'n/a',
     humanBacked: unit.humanBacked,
     a: a.verdict,
     b: b.verdict,
-    rule: input.rule,
+    rule,
     authorization,
     signature,
+    agent: claimAgent,
   });
+  emit({ step: 'settled', settlement });
 
   const doc = {
     _id: engagementId,
@@ -182,6 +212,7 @@ export async function runEngagement(c: Collections, input: RunEngagementInput) {
     downing: { journal: downingJournal },
     agentB: { verdict: b.verdict, requestId: b.requestId, model: b.model, imageHash: b.imageHash, latencyMs: b.latencyMs, journal: bJournal },
     worldVerdict,
+    claimAgent: claimAgent ?? null,
     settlement,
     status: settlement.outcome,
     createdAt: new Date(),

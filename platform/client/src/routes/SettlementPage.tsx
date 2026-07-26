@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { AppRail } from '../components/AppRail';
+import { DemoModeBanner } from '../components/settlement/DemoModeBanner';
 import { StatusStrip } from '../components/settlement/StatusStrip';
 import { RunPanel } from '../components/settlement/RunPanel';
 import { RunProgress } from '../components/settlement/RunProgress';
@@ -48,6 +49,7 @@ export function SettlementPage() {
 
   return (
     <div className="h-screen flex flex-col bg-bg text-ink">
+      <DemoModeBanner />
       <header className="h-12 border-b border-line bg-panel flex items-center gap-5 px-5 shrink-0">
         <div className="text-lg font-bold tracking-[0.25em]">{header.title}</div>
         <div className="text-[10px] font-mono text-muted uppercase tracking-wider">

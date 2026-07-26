@@ -25,8 +25,8 @@ Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs)
 | 0G | TEE-sealed inference | ✅ Done (as of this run) | `OG_API_KEY_TEE` (Private trust mode) now wired as the priority key in `platform/server/src/config.ts` |
 | 0G | Proof-of-inference artifact | ✅ Done | Console screenshot + request/trace ids, see below |
 | 0G | Agentic ID / contract address | ❌ Not done | No on-chain agent identity minted yet |
-| World | AgentKit gates payout, negative case works | ✅ Done | Real `authorize-payout` calls, paid + rejected, see below |
-| World | Selfie/Identity Beta feedback doc | ❌ Not done | `docs/world-feedback.md` doesn't exist |
+| World | AgentKit gates payout, negative case works | ✅ Done | Agent registered in AgentBook on World Chain ([tx](https://worldscan.org/tx/0xb9ec0636ab16b11ab7e40d08eda9761af1262282ed4f5085ed51de982bdff3dc)) + 402/403/authorized smoke — [World section](#world-agentkit--human-backed-payout-authorization) below |
+| World | Selfie/Identity Beta feedback doc | ✅ Done | [`docs/world-feedback.md`](./docs/world-feedback.md) — Selfie + AgentKit sections |
 | All | Video (2:00–2:59) | ❌ Not done | Not started |
 
 ## Repo layout
@@ -71,9 +71,34 @@ backing (World)") — no transaction exists for that path because the agent refu
 
 ## World AgentKit — human-backed payout authorization
 
-Before the settle-agent moves any money, it calls World's `authorize-payout` API (Interface 1 in
-[`docs/04-integration-contract.md`](./docs/04-integration-contract.md)) and only pays if the
-requesting agent is backed by a real, unique, verified human. This is live — not stubbed:
+Before the settle-agent moves any money, the unit's claim-agent must obtain a signed payout
+authorization from the World service (Interface 1 in
+[`docs/04-integration-contract.md`](./docs/04-integration-contract.md)) — and that endpoint is
+gated by the real AgentKit protocol: HTTP 402 challenge → SIWE signature with the agent's wallet
+key → server-side verification → **AgentBook lookup on World Chain**. Details in
+[`docs/06-agentkit.md`](./docs/06-agentkit.md).
+
+**On-chain registration proof (AgentBook, World Chain mainnet):**
+
+- Claim-agent wallet: `0xA07e1F5eC17363BFA5fEbf8c8682E9A48482ae00` (identity only — holds no funds)
+- Registration tx: [`0xb9ec0636ab16b11ab7e40d08eda9761af1262282ed4f5085ed51de982bdff3dc`](https://worldscan.org/tx/0xb9ec0636ab16b11ab7e40d08eda9761af1262282ed4f5085ed51de982bdff3dc)
+  ([Blockscout mirror](https://worldchain-mainnet.explorer.alchemy.com/tx/0xb9ec0636ab16b11ab7e40d08eda9761af1262282ed4f5085ed51de982bdff3dc) —
+  the calldata visibly contains the agent address and the nullifier hash)
+- AgentBook contract: [`0xA23aB2712eA7BBa896930544C7d6636a96b944dA`](https://worldscan.org/address/0xA23aB2712eA7BBa896930544C7d6636a96b944dA)
+- Verify yourself: `AgentBook.lookupHuman(0xA07e…ae00)` returns
+  `0x2a81207095f2386480e0936b6d91e9b747d315f5ae9c80cafa70db618d5be` — which is exactly the
+  World ID **nullifier hash** of the human who approved the registration in World App. One
+  registered human ⇒ one claim-agent ⇒ one payout stream; extra wallets all resolve to the
+  same human or to nobody.
+
+**Three callers, three outcomes** (`cd platform/server && npm run agentkit:smoke`, verified live):
+
+- bot (bare HTTP, can't answer the challenge) → `402 agentkit_signature_required`
+- impostor (valid signature, unregistered key) → `403 not_human_backed` — signature verified
+  on-chain, AgentBook consulted, nobody home
+- registered claim-agent → signed authorization, `backing=agentbook`
+
+Settlement-level evidence (the authorization actually gating Hedera money):
 
 - **Human-backed unit → authorized → paid:** engagement `eng-658aeb98bf`, World responded
   `{"ok":true,"status":200}`, settle-agent paid 100 DEFPOINT →

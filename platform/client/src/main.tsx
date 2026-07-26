@@ -7,6 +7,7 @@ import { TypesManagementPage } from './routes/TypesManagementPage';
 import { SandboxPage } from './routes/SandboxPage';
 import { ReleasesPage } from './routes/ReleasesPage';
 import { SettlementPage } from './routes/SettlementPage';
+import { EngagementPage } from './routes/EngagementPage';
 import { SpotterPage } from './routes/SpotterPage';
 import { LoginPage } from './pages/Login';
 import { RequireAuth } from './pages/RequireAuth';
@@ -34,7 +35,8 @@ function LandingRedirect() {
   if (meQ.isLoading) return null;
   const role = meQ.data?.role;
   if (role === 'spotter') return <Navigate to="/spotter" replace />;
-  if (role === 'government') return <Navigate to="/settlement" replace />;
+  if (role === 'military') return <Navigate to="/engagement" replace />;
+  if (role === 'government') return <Navigate to="/government" replace />;
   if (layersQ.isLoading) return null;
   const layers = layersQ.data ?? [];
   if (layers.length === 0) return <Navigate to="/types" replace />;
@@ -61,6 +63,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/types" element={<RequireAuth><TypesManagementPage /></RequireAuth>} />
           <Route path="/releases" element={<RequireAuth><ReleasesPage /></RequireAuth>} />
           <Route path="/settlement" element={<RequireAuth><SettlementPage /></RequireAuth>} />
+          <Route path="/engagement" element={<RequireAuth><EngagementPage /></RequireAuth>} />
+          <Route path="/government" element={<RequireAuth><GovernmentPage /></RequireAuth>} />
           <Route path="/spotter" element={<RequireAuth><SpotterPage /></RequireAuth>} />
         </Routes>
       </BrowserRouter>

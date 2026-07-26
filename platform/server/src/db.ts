@@ -1,6 +1,7 @@
 import { MongoClient, type Db, type Collection, type Document } from 'mongodb';
 import { config } from './config.js';
 import type { InviteRow, SessionRow } from './auth/session.js';
+import type { SettlementRule } from './hedera/settle.js';
 
 export interface BaseDoc {
   _id: any;
@@ -43,6 +44,15 @@ export interface SpotDoc {
   [k: string]: unknown;
 }
 
+/** Singleton settlement policy set by government-level operators. `_id` is a
+ * fixed key ('active') so there is exactly one live rule at a time. */
+export interface SettingsDoc {
+  _id: string;
+  rule: SettlementRule;
+  updatedBy: string;
+  updatedAt: Date;
+}
+
 export interface Collections {
   interceptorTypes: Collection<Document>;
   threatTypes: Collection<Document>;
@@ -58,6 +68,7 @@ export interface Collections {
   units: Collection<UnitDoc>;
   engagements: Collection<EngagementDoc>;
   spots: Collection<SpotDoc>;
+  settings: Collection<SettingsDoc>;
 }
 
 let _client: MongoClient | null = null;
@@ -87,6 +98,7 @@ export async function connectDb(): Promise<{ client: MongoClient; db: Db; collec
     units: _db.collection<UnitDoc>('units'),
     engagements: _db.collection<EngagementDoc>('engagements'),
     spots: _db.collection<SpotDoc>('spots'),
+    settings: _db.collection<SettingsDoc>('settlement_settings'),
   };
 
   await ensureIndexes(_collections);

@@ -48,12 +48,17 @@ export type AgentBVerdict = {
   reasoning: string;
 };
 
+/** Per-target-type payout table (government's price list). Keys are Agent A
+ *  classifications; a matching entry overrides the flat `payout`. */
+export type Tariffs = { shahed_class?: number; other_uav?: number; aircraft?: number };
+
 export type SettlementRule = {
   minThreatConfidence: number;
   requireDestroyed: boolean;
   minDestroyedConfidence: number;
   requireConsistent: boolean;
   payout: number;
+  tariffs?: Tariffs;
 };
 
 export type SettlementOutcome = 'paid' | 'frozen' | 'rejected';
@@ -144,6 +149,17 @@ export type RunEngagementBody = {
   time?: string;
   rule?: SettlementRule;
 };
+
+/** One NDJSON line from POST /settlement/engagements/stream. Each non-terminal
+ *  event fires the moment its real step completes; `done` carries the full doc. */
+export type EngagementStreamEvent =
+  | { step: 'report'; engagementId: string; imageHash: string; coords: { lat: number; lon: number } | null; time: string; journal: Journal }
+  | { step: 'agent_a'; agentA: AgentRunRecord<AgentAVerdict> }
+  | { step: 'downing'; downing: { journal: Journal } }
+  | { step: 'agent_b'; agentB: AgentRunRecord<AgentBVerdict> }
+  | { step: 'settled'; settlement: Engagement['settlement'] }
+  | { step: 'done'; engagement: Engagement }
+  | { step: 'error'; message: string };
 
 export type UnitBalance = { accountId: string | null; balance: number };
 

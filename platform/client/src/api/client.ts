@@ -10,11 +10,13 @@ import type { ThreatType, ThreatTypeCreate, ThreatTypePatch } from '@shared/sche
 import type { LatLng } from '@shared/schemas/common';
 import type {
   Engagement,
+  EngagementStreamEvent,
   LedgerResponse,
   MyUnit,
   OnboardBody,
   ReportSpotBody,
   RunEngagementBody,
+  SettlementRule,
   SettlementStatus,
   Spot,
   Unit,
@@ -32,7 +34,7 @@ export class ApiError extends Error {
 }
 
 async function http<T>(
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   opts: { body?: unknown; ifMatch?: number; operator?: string } = {},
 ): Promise<T> {
@@ -225,6 +227,56 @@ export const api = {
   runEngagement: (body: RunEngagementBody) =>
     http<Engagement>('POST', '/settlement/engagements', { body }),
 
+  /** Streaming engagement run: the server writes one NDJSON line per real step
+   *  (report → agent_a → downing → agent_b → settled → done). `onEvent` fires as
+   *  each lands, so the UI shows genuine per-step progress. Resolves to the final
+   *  engagement doc; rejects on an `error` line or a non-2xx response. */
+  async runEngagementStream(
+    body: RunEngagementBody,
+    onEvent: (ev: EngagementStreamEvent) => void,
+  ): Promise<Engagement> {
+    const res = await fetch(`${BASE}/settlement/engagements/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401 && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+    if (!res.ok || !res.body) {
+      const text = await res.text().catch(() => '');
+      const parsed = text ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
+      throw new ApiError(res.status, parsed?.code ?? 'ENGAGEMENT_FAILED', parsed?.message ?? text ?? 'engagement failed', parsed);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let final: Engagement | null = null;
+    const handleLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      const ev = JSON.parse(trimmed) as EngagementStreamEvent;
+      if (ev.step === 'error') throw new ApiError(502, 'ENGAGEMENT_FAILED', ev.message);
+      if (ev.step === 'done') final = ev.engagement;
+      onEvent(ev);
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        handleLine(line);
+      }
+    }
+    if (buf.trim()) handleLine(buf);
+    if (!final) throw new ApiError(502, 'ENGAGEMENT_FAILED', 'stream ended before a result');
+    return final;
+  },
+
   getEngagements: () => http<Engagement[]>('GET', '/settlement/engagements'),
 
   // Spotter flow: 1 live 0G inference call — expect ~5-15s.
@@ -234,6 +286,21 @@ export const api = {
 
   getEngagement: (id: string) =>
     http<Engagement>('GET', `/settlement/engagements/${encodeURIComponent(id)}`),
+
+  // --- government policy + dispute resolution ---
+  getRule: () => http<{ rule: SettlementRule; default: SettlementRule }>('GET', '/settlement/rule'),
+
+  putRule: (rule: SettlementRule) =>
+    http<{ rule: SettlementRule }>('PUT', '/settlement/rule', { body: rule }),
+
+  /** Resolve a frozen (disputed) engagement: 'release' pays the tariff, 'deny'
+   *  clears the freeze and pays nothing. Both journal to HCS. */
+  resolveEngagement: (id: string, body: { action: 'release' | 'deny'; note?: string }) =>
+    http<{ ok: true; outcome: 'paid' | 'rejected'; payout: number; txId?: string }>(
+      'POST',
+      `/settlement/engagements/${encodeURIComponent(id)}/resolve`,
+      { body },
+    ),
 
   getLedger: (opts: { engagementId?: string; limit?: number } = {}) => {
     const params = new URLSearchParams();

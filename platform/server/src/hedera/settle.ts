@@ -22,18 +22,29 @@ export interface SettlementRule {
   minDestroyedConfidence: number;
   /** Agent B's outcome must be consistent with Agent A's classification. */
   requireConsistent: boolean;
-  /** DEFPOINT paid per confirmed downing. */
+  /** DEFPOINT paid per confirmed downing (fallback when no tariff matches). */
   payout: number;
+  /** Per-target-type tariff table, keyed by Agent A's classification. A matching
+   * entry overrides `payout` — this is the government's price list for kills. */
+  tariffs?: Partial<Record<AgentAVerdict['classification'], number>>;
 }
 
-/** Default government rule: "pay from 95%, both agents must agree." */
+/** Default government rule: "pay from 95%, both agents must agree." Tariffs price
+ * a Shahed kill above a generic UAV; unlisted classes fall back to `payout`. */
 export const DEFAULT_RULE: SettlementRule = {
   minThreatConfidence: 0.95,
   requireDestroyed: true,
   minDestroyedConfidence: 0.8,
   requireConsistent: true,
   payout: 100,
+  tariffs: { shahed_class: 150, other_uav: 100, aircraft: 250 },
 };
+
+/** The DEFPOINT owed for a confirmed kill: the tariff for Agent A's class, or the
+ * flat `payout` when that class isn't priced. */
+export function payoutFor(rule: SettlementRule, classification: AgentAVerdict['classification']): number {
+  return rule.tariffs?.[classification] ?? rule.payout;
+}
 
 export type Decision = 'pay' | 'freeze' | 'reject';
 
@@ -61,7 +72,12 @@ export function decideSettlement(
   if (rule.requireConsistent && !b.consistent_with_prior) {
     return { decision: 'freeze', reason: 'Agent B outcome inconsistent with Agent A — needs manual review', payout: 0 };
   }
-  return { decision: 'pay', reason: 'both agents confirmed; rule satisfied', payout: rule.payout };
+  const payout = payoutFor(rule, a.classification);
+  return {
+    decision: 'pay',
+    reason: `both agents confirmed; rule satisfied (${a.classification.replace(/_/g, ' ')} tariff)`,
+    payout,
+  };
 }
 
 export interface SettleInput {
@@ -77,6 +93,9 @@ export interface SettleInput {
    * WORLD_SIGNER_ADDRESS is configured. */
   authorization?: PayoutAuthorization;
   signature?: string;
+  /** AgentKit identity behind the claim (from World's response): the claim-agent's
+   * wallet and the AgentBook human id it resolved to. Journaled as evidence. */
+  agent?: { address: string; humanId: string; backing: 'agentbook' | 'dev-stub' };
 }
 
 /**
@@ -89,9 +108,11 @@ async function checkAuthorized(input: SettleInput): Promise<{ ok: boolean; reaso
   // real human-backing gate (bot never has one).
   if (worldAuthEnabled && input.authorization && input.signature) {
     const res = await verifyPayoutAuthorization(input.authorization, input.signature, input.engagementId);
-    return res.ok
-      ? { ok: true, reason: `authorized by World (human ${res.humanId}, tier ${res.tier})` }
-      : { ok: false, reason: `authorization rejected: ${res.reason}` };
+    if (!res.ok) return { ok: false, reason: `authorization rejected: ${res.reason}` };
+    const via = input.agent
+      ? ` via AgentKit agent ${input.agent.address} → AgentBook human ${input.agent.humanId}${input.agent.backing === 'dev-stub' ? ' [DEV STUB]' : ''}`
+      : '';
+    return { ok: true, reason: `authorized by World (human ${res.humanId}, tier ${res.tier})${via}` };
   }
   // No authorization (unit carries no World identity, or World unconfigured):
   // fall back to the demo human-backing flag so the pipeline still runs. A bot

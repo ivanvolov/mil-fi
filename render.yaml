@@ -68,6 +68,10 @@ services:
         sync: false
       - key: WORLD_SIGNER_ADDRESS
         sync: false
+      # Claim-agent AgentKit identity key (docs/06-agentkit.md). Registered in
+      # AgentBook on World Chain; signs payout claims, holds no funds.
+      - key: AGENT_WALLET_KEY
+        sync: false
 
       # World ID one-time verification gate (server/src/auth/worldVerify.ts).
       # Same Developer Portal app as app/my-first-mini-app/.env.local — reusing it

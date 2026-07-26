@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Eye, Map, Scale, Settings, LogOut, type LucideIcon } from 'lucide-react';
+import { Crosshair, Eye, Landmark, Map, Scale, Settings, LogOut, type LucideIcon } from 'lucide-react';
 import { useUiStore } from '../stores/uiStore';
 import { useMe, type Role } from '../queries/useMe';
 
@@ -44,9 +44,9 @@ export function AppRail() {
   const lastSlug = useUiStore((s) => s.lastLayerSlug) ?? 'vzil-1';
   const { pathname } = useLocation();
   const role = useMe().data?.role;
-  // Each role gets its own workspace: military → Sector (+ Settle to file
-  // engagements), government → Settle, spotters → Spot, admin → everything.
-  // While role is still loading, render no tabs (most-restricted view).
+  // Each role gets its OWN window: military → Engage, government → Govern,
+  // spotters → Spot, plus Sector map for military/admin. Admin also gets the
+  // full Settlement story. While role is still loading, render no tabs.
   const forRole = (tabs: Tab[]) => (role ? tabs.filter((t) => t.roles.includes(role)) : []);
   const topTabs: Tab[] = forRole([
     {
@@ -64,13 +64,28 @@ export function AppRail() {
       roles: ['admin', 'spotter'],
     },
     {
-      // Same console, role-specific framing: military files claims there,
-      // government governs rules/balances, admin sees the full settlement story.
-      label: role === 'military' ? 'Claims' : role === 'government' ? 'Govern' : 'Settle',
+      // Military's own engagement workspace — the live report→verdict→payout pipeline.
+      label: 'Engage',
+      to: '/engagement',
+      icon: Crosshair,
+      active: (p) => p === '/engagement',
+      roles: ['admin', 'military'],
+    },
+    {
+      // Government's own window — payout policy, tariffs, disputes, balances.
+      label: 'Govern',
+      to: '/government',
+      icon: Landmark,
+      active: (p) => p === '/government',
+      roles: ['admin', 'government'],
+    },
+    {
+      // Admin-only: the full end-to-end settlement story on one console.
+      label: 'Settle',
       to: '/settlement',
       icon: Scale,
       active: (p) => p === '/settlement',
-      roles: ['admin', 'government', 'military'],
+      roles: ['admin'],
     },
   ]);
   // Sandbox + Releases are hidden for the bounty demo (routes still work by URL).
