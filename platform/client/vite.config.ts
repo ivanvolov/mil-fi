@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
+  // The shared .env lives at the repo root (mil-fi/.env), same file server/src/config.ts
+  // loads — Vite otherwise only looks in this package's own directory and would never
+  // see VITE_WORLD_APP_ID.
+  envDir: fileURLToPath(new URL('../..', import.meta.url)),
   plugins: [react()],
   resolve: {
     alias: {

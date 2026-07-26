@@ -17,6 +17,7 @@ import { SimulatorOverlayLayer } from './layers/SimulatorOverlayLayer';
 import { AssetPlannerOverlayLayer } from './layers/AssetPlannerOverlayLayer';
 import { MfgHeatmapLayer } from './layers/MfgHeatmapLayer';
 import { AssignmentLinkLayer } from './layers/AssignmentLinkLayer';
+import { DemoStrikeLayer } from './layers/DemoStrikeLayer';
 
 /** Side-effect: inject the brick-hatch SVG pattern into Leaflet's overlay <svg defs>. */
 function BrickHatchPattern() {
@@ -308,6 +309,7 @@ export function MapHost({ data }: { data: LayerFull }) {
       {!overlayActive && <EditHandlesLayer threats={data.threats} />}
       {!overlayActive && <DrawingEditHandlesLayer drawings={data.drawings} />}
       {!overlayActive && !assetsHidden && <AssignmentLinkLayer data={data} />}
+      {!overlayActive && !assetsHidden && <DemoStrikeLayer data={data} />}
       <SimulatorOverlayLayer />
       <AssetPlannerOverlayLayer />
       <MfgHeatmapLayer data={data} />

@@ -44,6 +44,7 @@ export function WorldVerifyGate() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({}),
       });
       if (!response.ok) throw new Error(`Could not start verification (${response.status})`);
 
