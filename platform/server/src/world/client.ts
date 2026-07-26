@@ -1,7 +1,8 @@
 import { config, worldClientEnabled } from '../config.js';
+import type { PayoutAuthorization } from './auth.js';
 
 /**
- * Outbound calls to the World mini-app service (docs/05-integration-contract.md).
+ * Outbound calls to the World mini-app service (docs/04-integration-contract.md).
  * Both degrade gracefully: with no WORLD_BASE_URL/WORLD_SERVICE_TOKEN configured
  * they no-op, so the pipeline runs standalone in demo mode.
  */
@@ -40,6 +41,42 @@ export async function postEngagementVerdict(v: EngagementVerdict): Promise<World
     return { ok: res.ok, status: res.status };
   } catch (err) {
     return { ok: false, skippedReason: err instanceof Error ? err.message : 'verdict-post-failed' };
+  }
+}
+
+export interface PulledAuthorization {
+  authorization: PayoutAuthorization;
+  signature: string;
+}
+
+/**
+ * Interface 1 (pull side) — ask World to sign a payout authorization for an
+ * engagement, given the operator's World identity. Returns null when World
+ * refuses (bot / insufficient tier / not configured) — the settle-agent then has
+ * no authorization and rejects the payout. This is the wired-up negative case.
+ */
+export async function getPayoutAuthorization(input: {
+  engagementId: string;
+  nullifier: string;
+  tier: number;
+  amount?: string;
+  currency?: string;
+}): Promise<PulledAuthorization | null> {
+  if (!worldClientEnabled) return null;
+  try {
+    const res = await fetch(`${config.world.baseUrl}/api/authorize-payout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.world.serviceToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) return null; // 403 not_human_backed / insufficient_tier
+    const body = (await res.json()) as { authorized?: boolean } & PulledAuthorization;
+    return body.authorized ? { authorization: body.authorization, signature: body.signature } : null;
+  } catch {
+    return null;
   }
 }
 
