@@ -1,7 +1,7 @@
 import { signRequest } from '@worldcoin/idkit/signing';
 import type { FastifyInstance } from 'fastify';
 import { config, worldIdVerifyEnabled } from '../config.js';
-import { markWorldVerified, type AuthCollections, type WorldCredentialType } from './session.js';
+import { markWorldVerified, type AuthCollections, type Role, type WorldCredentialType } from './session.js';
 
 /**
  * One-time World ID identity confirmation. Not a login step — the operator is already
@@ -37,6 +37,24 @@ function tierForIdentifier(identifier: string | undefined): number {
       return 1; // BASIC — spotter
     default:
       return 0; // UNVERIFIED
+  }
+}
+
+/** The credential completed IS the clearance — see docs/03-architecture-bounty-map.md's
+ * three levels (Orb→government, document→military, Selfie→spotter). Mirrors
+ * tierForIdentifier's tier numbers 1:1; `undefined` means no credential matched, so the
+ * holder's role is left untouched rather than downgraded. */
+function roleForIdentifier(identifier: string | undefined): Role | undefined {
+  switch (identifier) {
+    case 'proof_of_human':
+    case 'orb':
+      return 'government';
+    case 'passport':
+      return 'military';
+    case 'selfie':
+      return 'spotter';
+    default:
+      return undefined;
   }
 }
 
@@ -93,16 +111,18 @@ export async function registerWorldVerifyRoutes(app: FastifyInstance, c: AuthCol
     const nullifier = passed?.nullifier ?? result.nullifier ?? 'unknown';
     const tier = tierForIdentifier(passed?.identifier);
     const credentialType = (passed?.identifier ?? 'unknown') as WorldCredentialType;
+    const role = roleForIdentifier(passed?.identifier);
 
     await markWorldVerified(c, req.session.code, req.session.sessionId, {
       nullifier,
       tier,
       credentialType,
+      role,
     });
 
     return {
       label: req.session.label,
-      role: req.session.role,
+      role: role ?? req.session.role,
       worldVerified: true,
       tier,
       tierLabel: TIER_LABELS[tier],

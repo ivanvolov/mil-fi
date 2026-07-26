@@ -56,7 +56,7 @@ type Phase =
   | { name: 'verifying' }
   | { name: 'error'; message: string };
 
-export function WorldVerifyGate() {
+export function WorldVerifyGate({ onSkip }: { onSkip?: () => void }) {
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const queryClient = useQueryClient();
 
@@ -119,13 +119,29 @@ export function WorldVerifyGate() {
   return (
     <div className="min-h-full flex items-center justify-center bg-[#0d1117] text-[#e7e9ea] p-6">
       <div className="w-full max-w-md bg-[#161b22] border border-[#21262d] rounded-lg p-6 shadow-lg flex flex-col gap-4">
-        <div>
-          <h1 className="text-xl font-semibold mb-1">One-time identity check</h1>
-          <p className="text-sm text-[#8b949e]">
-            Confirm your clearance with World ID — this only happens once. Scan the QR
-            with World App, then complete whichever method it offers you (Selfie,
-            Passport, or Orb).
-          </p>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h1 className="text-xl font-semibold mb-1">Change your status with World ID</h1>
+            <p className="text-sm text-[#8b949e]">
+              The credential you complete <span className="text-[#e7e9ea]">is</span> your
+              status — it changes your role in the app.
+            </p>
+          </div>
+
+          <ul className="text-xs text-[#8b949e] flex flex-col gap-1.5 border-l-2 border-[#21262d] pl-3">
+            <li>
+              <span className="text-[#e7e9ea] font-medium">Selfie Check → Spotter.</span>{' '}
+              Report sightings: photo + coordinates + time. The entry point of the funnel.
+            </li>
+            <li>
+              <span className="text-[#e7e9ea] font-medium">Passport → Military.</span>{' '}
+              File and resolve engagements, receive settlement payouts for your unit.
+            </li>
+            <li>
+              <span className="text-[#e7e9ea] font-medium">Orb → Government.</span>{' '}
+              Set payout policy and tariffs, freeze or resolve disputed payouts.
+            </li>
+          </ul>
         </div>
 
         {phase.name === 'idle' && (
@@ -188,6 +204,18 @@ export function WorldVerifyGate() {
               className="rounded-full border border-[#30363d] px-4 py-2 text-sm"
             >
               Try again
+            </button>
+          </div>
+        )}
+
+        {onSkip && phase.name !== 'verifying' && (
+          <div className="pt-3 border-t border-[#21262d]">
+            <button
+              type="button"
+              onClick={onSkip}
+              className="text-sm text-[#8b949e] hover:text-[#e7e9ea] transition"
+            >
+              Continue with current status →
             </button>
           </div>
         )}

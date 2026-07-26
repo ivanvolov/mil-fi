@@ -57,6 +57,7 @@ export async function registerAuthRoutes(app: FastifyInstance, c: AuthCollection
         label: invite.label,
         role: session.role ?? 'admin',
         worldVerified: isWorldVerified(session),
+        worldTier: session.worldTier ?? null,
       };
     },
   );
@@ -82,6 +83,6 @@ export async function registerAuthRoutes(app: FastifyInstance, c: AuthCollection
     if (!unsigned.valid || !unsigned.value) return reply.status(401).send({ code: 'UNAUTHENTICATED' });
     const row = await lookupSession(c, unsigned.value);
     if (!row) return reply.status(401).send({ code: 'UNAUTHENTICATED' });
-    return { label: row.label, role: row.role ?? 'admin', worldVerified: isWorldVerified(row) };
+    return { label: row.label, role: row.role ?? 'admin', worldVerified: isWorldVerified(row), worldTier: row.worldTier ?? null };
   });
 }

@@ -40,8 +40,10 @@ Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs)
 - **`verification/`** — standalone 0G Compute vision-inference harness used to prototype Agent A/B
   before they were wired into `platform/server`. See [`verification/README.md`](./verification/README.md).
 - **`app/`** — World identity / AgentKit mini-app (Next.js). See [`app/CLAUDE.md`](./app/CLAUDE.md).
-- **`docs/`** — story, architecture, integration contract, submission checklist, and planning
-  artifacts (AI-tool attribution lives here too — see below).
+- **`docs/`** — story, architecture, integration contract, submission checklist, validation
+  evidence ([`07-validation.md`](./docs/07-validation.md)), business model & roadmap
+  ([`08-business-model.md`](./docs/08-business-model.md)), and planning artifacts
+  (AI-tool attribution lives here too — see below).
 
 ## Payment flow — live, verifiable on Hedera testnet
 
@@ -166,6 +168,46 @@ audit trail lives on Hedera (HTS `0.0.9753000`, HCS `0.0.9753001`). 0G's Agentic
 on-chain agent identity NFT) is only a requirement for Agentic-ID-based projects; minting IDs
 for Agent A/B is listed as future work in
 [`docs/03-architecture-bounty-map.md`](./docs/03-architecture-bounty-map.md).
+
+## Network impact — what Hedera gets out of this
+
+MilFi's unit economics are set by the war's arithmetic, and the arithmetic is large:
+
+- **A lot of drones.** Large Shahed raids against Ukraine now run into the hundreds of
+  drones and decoys in a single night — and every one of them is a potential engagement:
+  report, two agent verdicts, downing, settlement.
+- **Thousands of transactions per raid night.** One engagement writes ~7 Hedera
+  transactions — five HCS journal messages (report hash, verdict A, downing, verdict B,
+  receipt) plus the HTS payout, plus freeze/unfreeze on disputes. A single 300-drone raid
+  night processed through MilFi is **~2,000+ Hedera transactions**; a month of raids is
+  tens of thousands. Rejected reports journal too, so traffic scales with reports, not
+  just kills.
+- **Accounts by construction, active by construction.** Onboarding *is* Hedera account
+  creation — every unit gets an account via `AccountCreateTransaction`
+  (`platform/server/src/hedera/token.ts`), KYC-granted on the DEFPOINT token. Spotters
+  and government operators follow the same path. And these are monthly-*active* accounts
+  by design: the account is how a unit gets paid, so it's touched every engagement, not
+  parked.
+- **The value layer is already real.** Ukraine's state-run e-points economy — the
+  marketplace where units redeem points for drones, equipment, and weapons systems — is
+  processing on the order of **₴150 billion (~$3.3B USD) in value**. That marketplace redemption flow
+  is exactly what DEFPOINT models: every credit and every redemption becomes a native HTS
+  operation. MilFi is the settlement rail that moves that economy onto Hedera.
+- **A new audience for Hedera.** Defense contracting, state incentive programs, and
+  critical-infrastructure protection are sectors with zero current Hedera presence — and
+  every future conflict and infrastructure operator faces the same cheap-massed-drone
+  problem.
+
+The beachhead is us: MilFi deploys first on our own counter-UAV operations — our sites,
+our partnered units, our engagement volume — generating real Hedera traffic from day one,
+no external adoption required.
+
+This isn't a hypothetical audience — our partnered units have already intercepted hundreds
+of hostile drones through operations coordinated on the platform this settlement layer sits
+on top of, and the submission video shows that hardware in the field. See
+[`docs/07-validation.md`](./docs/07-validation.md) for the operational record and
+[`docs/08-business-model.md`](./docs/08-business-model.md) for how that beachhead turns
+into the ₴150B (~$3.3B USD) marketplace and the MoD's unit-budget restructuring.
 
 ## AI-tool attribution
 

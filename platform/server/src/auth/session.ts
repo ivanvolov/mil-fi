@@ -106,18 +106,21 @@ export function isWorldVerified(row: { role?: Role; worldNullifier?: string }): 
 }
 
 /** Records a completed World ID verification against the invite (permanent) and the
- * live session (so the current request doesn't need a re-login to see it). */
+ * live session (so the current request doesn't need a re-login to see it). When `role`
+ * is given, the completed credential also becomes the holder's clearance — the whole
+ * point of "the credential you complete is your status" (see WorldVerifyGate copy). */
 export async function markWorldVerified(
   c: AuthCollections,
   inviteId: string,
   sessionId: string,
-  verification: { nullifier: string; tier: number; credentialType: WorldCredentialType },
+  verification: { nullifier: string; tier: number; credentialType: WorldCredentialType; role?: Role },
 ): Promise<void> {
-  const fields: WorldVerificationFields = {
+  const fields: WorldVerificationFields & { role?: Role } = {
     worldNullifier: verification.nullifier,
     worldTier: verification.tier,
     worldCredentialType: verification.credentialType,
     worldVerifiedAt: new Date(),
+    ...(verification.role ? { role: verification.role } : {}),
   };
   await Promise.all([
     c.invites.updateOne({ _id: inviteId }, { $set: fields }),
