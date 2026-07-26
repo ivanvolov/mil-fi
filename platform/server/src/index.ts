@@ -20,6 +20,7 @@ import { registerAiRoutes } from './routes/ai.js';
 import { registerEngagementRoutes } from './routes/engagements.js';
 import { closeHedera } from './hedera/client.js';
 import { registerAuthRoutes } from './auth/routes.js';
+import { registerWorldVerifyRoutes } from './auth/worldVerify.js';
 import { registerHookRoutes } from './routes/hooks.js';
 import { makeRequireSession, requireRoleForWrite } from './auth/middleware.js';
 import { HttpError } from './lib/crud.js';
@@ -85,6 +86,14 @@ async function main() {
   await app.register(async (api) => {
     await registerAuthRoutes(api, collections);
   }, { prefix: '/api/v1' });
+
+  // One-time World ID verification gate. Requires a session (you must already be
+  // logged in via password to confirm your clearance), but skips requireRoleForWrite —
+  // every role may verify itself; this isn't a settlement mutation.
+  await app.register(async (api) => {
+    api.addHook('preHandler', requireSession);
+    await registerWorldVerifyRoutes(api, collections);
+  }, { prefix: '/api/v1/auth/world' });
 
   // Render → Telegram deploy notifier. Public endpoint (Render can't send session cookies);
   // guarded by HMAC signature verification against RENDER_WEBHOOK_SECRET. Encapsulated in

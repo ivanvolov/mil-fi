@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Play, Plus, Upload } from 'lucide-react';
 import { useMe } from '../../queries/useMe';
-import { useOnboardUnit, useRunEngagement, useUnits } from '../../queries/useSettlement';
+import { useMyUnit, useOnboardUnit, useRunEngagement, useUnits } from '../../queries/useSettlement';
 import { useSettlementStore } from '../../stores/settlementStore';
 import type { HumanBackingLevel, SettlementRule } from '../../types/settlement';
 import { shrinkImagePair } from '../../lib/settlement-image';
@@ -198,6 +198,10 @@ export function RunPanel() {
   const canSetRule = role === 'admin' || role === 'government';
 
   const units = useUnits().data ?? [];
+  // Military accounts are bound to their unit in the DB — no unit picking.
+  const myUnitId = useMyUnit().data?.unitId ?? null;
+  const boundUnitId = role === 'military' ? myUnitId : null;
+  const onboardBound = useOnboardUnit();
   const run = useRunEngagement();
   const runStage = useSettlementStore((s) => s.runStage);
   const runError = useSettlementStore((s) => s.runError);
@@ -219,8 +223,11 @@ export function RunPanel() {
   });
 
   const selectedUnit = useMemo(
-    () => units.find((u) => u._id === unitId) ?? units[0] ?? null,
-    [units, unitId],
+    () =>
+      boundUnitId
+        ? units.find((u) => u._id === boundUnitId) ?? null
+        : units.find((u) => u._id === unitId) ?? units[0] ?? null,
+    [units, unitId, boundUnitId],
   );
 
   const ruleModified = useMemo(
@@ -251,37 +258,73 @@ export function RunPanel() {
         Run engagement
       </div>
       <div className="p-3 flex flex-col gap-3">
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[9px] uppercase tracking-wider text-muted">claiming unit</span>
-            <button
-              type="button"
-              onClick={() => setShowOnboard((v) => !v)}
-              className="flex items-center gap-0.5 text-[9px] uppercase tracking-wider text-cyan hover:underline"
-            >
-              <Plus size={9} /> onboard
-            </button>
+        {boundUnitId ? (
+          <div>
+            <div className="text-[9px] uppercase tracking-wider text-muted mb-1">your unit</div>
+            {selectedUnit ? (
+              <div className="border border-line/60 bg-bg/40 px-2 py-1.5 text-[11px]">
+                {selectedUnit._id}{' '}
+                <span className={selectedUnit.humanBacked ? 'text-green' : 'text-red'}>
+                  {selectedUnit.humanBacked
+                    ? `· human (${selectedUnit.humanBackingLevel})`
+                    : '· BOT — no human'}
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={onboardBound.isPending}
+                onClick={() =>
+                  onboardBound.mutate({
+                    unitId: boundUnitId,
+                    humanBackingLevel: 'military',
+                    worldProof: { source: 'world-id', verified_at: new Date().toISOString() },
+                  })
+                }
+                className="w-full border border-cyan text-cyan text-[10px] uppercase tracking-wider py-1.5 hover:bg-cyan/10 disabled:opacity-50"
+              >
+                {onboardBound.isPending
+                  ? `activating ${boundUnitId}… (Hedera account + KYC)`
+                  : `activate ${boundUnitId} (Hedera account + KYC)`}
+              </button>
+            )}
+            {onboardBound.isError && (
+              <div className="text-[9px] text-red mt-1">{(onboardBound.error as Error).message}</div>
+            )}
           </div>
-          <select
-            className={inputCls + ' w-full'}
-            value={selectedUnit?._id ?? ''}
-            onChange={(e) => setUnitId(e.target.value)}
-          >
-            {units.length === 0 && <option value="">no units — onboard one</option>}
-            {units.map((u) => (
-              <option key={u._id} value={u._id}>
-                {u._id} {u.humanBacked ? `· human (${u.humanBackingLevel})` : '· BOT — no human'}
-              </option>
-            ))}
-          </select>
-          {selectedUnit && !selectedUnit.humanBacked && (
-            <div className="text-[9px] text-red mt-1">
-              ⚠ no World proof — the settle-agent will reject this unit's claim
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[9px] uppercase tracking-wider text-muted">claiming unit</span>
+              <button
+                type="button"
+                onClick={() => setShowOnboard((v) => !v)}
+                className="flex items-center gap-0.5 text-[9px] uppercase tracking-wider text-cyan hover:underline"
+              >
+                <Plus size={9} /> onboard
+              </button>
             </div>
-          )}
-        </div>
+            <select
+              className={inputCls + ' w-full'}
+              value={selectedUnit?._id ?? ''}
+              onChange={(e) => setUnitId(e.target.value)}
+            >
+              {units.length === 0 && <option value="">no units — onboard one</option>}
+              {units.map((u) => (
+                <option key={u._id} value={u._id}>
+                  {u._id} {u.humanBacked ? `· human (${u.humanBackingLevel})` : '· BOT — no human'}
+                </option>
+              ))}
+            </select>
+            {selectedUnit && !selectedUnit.humanBacked && (
+              <div className="text-[9px] text-red mt-1">
+                ⚠ no World proof — the settle-agent will reject this unit's claim
+              </div>
+            )}
+          </div>
+        )}
 
-        {showOnboard && (
+        {showOnboard && !boundUnitId && (
           <OnboardForm
             onDone={(id) => {
               setUnitId(id);

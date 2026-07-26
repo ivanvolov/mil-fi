@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 export type Role = 'admin' | 'government' | 'military' | 'spotter';
 
-export type Me = { label: string; role: Role };
+export type Me = { label: string; role: Role; worldVerified: boolean };
 
 /** The logged-in session (label + role). Role gates which flow buttons, map layers,
  *  and tools render; the server enforces the same rules on every mutation, so this

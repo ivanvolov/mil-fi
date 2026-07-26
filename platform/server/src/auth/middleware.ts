@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   COOKIE_NAME,
   cookieOptions,
+  isWorldVerified,
   lookupSession,
   refreshSession,
   type AuthCollections,
@@ -10,7 +11,14 @@ import {
 
 declare module 'fastify' {
   interface FastifyRequest {
-    session?: { code: string; label: string; role: Role };
+    session?: {
+      sessionId: string;
+      code: string;
+      label: string;
+      role: Role;
+      worldVerified: boolean;
+      worldTier?: number;
+    };
   }
 }
 
@@ -31,7 +39,14 @@ export function makeRequireSession(c: AuthCollections) {
       return reply.status(401).send({ code: 'UNAUTHENTICATED', message: 'session expired' });
     }
 
-    req.session = { code: row.code, label: row.label, role: row.role ?? 'admin' };
+    req.session = {
+      sessionId: row._id,
+      code: row.code,
+      label: row.label,
+      role: row.role ?? 'admin',
+      worldVerified: isWorldVerified(row),
+      worldTier: row.worldTier,
+    };
     // sliding window — fire and forget; failure to refresh shouldn't block the request
     refreshSession(c, row._id).catch((err) => req.log.warn({ err }, 'session refresh failed'));
   };
@@ -51,6 +66,7 @@ export async function requireRoleForWrite(req: FastifyRequest, reply: FastifyRep
   const url = req.url.split('?')[0] ?? '';
   const allowed =
     (role === 'military' && req.method === 'POST' && url.startsWith('/api/v1/settlement/engagements')) ||
+    (role === 'military' && req.method === 'POST' && url === '/api/v1/settlement/onboard') ||
     (role === 'spotter' && req.method === 'POST' && url === '/api/v1/settlement/spots');
   if (allowed) return;
 

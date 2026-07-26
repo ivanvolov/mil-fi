@@ -63,13 +63,20 @@ export const config = {
     // The address that signs payout authorizations (Interface 1). When set, the
     // payment path REQUIRES a valid signed authorization before releasing funds.
     signerAddress: (process.env.WORLD_SIGNER_ADDRESS ?? '').toLowerCase(),
+    // IDKit relying-party identity for the one-time operator verification gate
+    // (auth/worldVerify.ts). Same Developer Portal app as app/my-first-mini-app —
+    // reusing it avoids provisioning a second RP under deadline pressure.
+    rpSigningKey: optional('RP_SIGNING_KEY'),
+    rpId: optional('RP_ID'),
   },
 
   // 0G Compute router (OpenAI-compatible). Hosts the vision agents (A + B).
-  // Key reused from the verification/ harness; falls back to root OG_API_KEY.
+  // OG_API_KEY_TEE (Private trust mode — inference runs inside a TEE) takes
+  // priority so verdicts are genuinely TEE-sealed; falls back to the Standard
+  // key only if no TEE key is configured.
   zerog: {
     baseUrl: (process.env.ZG_ROUTER_BASE_URL ?? 'https://router-api-testnet.integratenetwork.work/v1').replace(/\/$/, ''),
-    apiKey: process.env.ZG_ROUTER_API_KEY ?? process.env.OG_API_KEY ?? '',
+    apiKey: process.env.OG_API_KEY_TEE ?? process.env.ZG_ROUTER_API_KEY ?? process.env.OG_API_KEY ?? '',
     model: process.env.ZG_MODEL ?? 'qwen2.5-omni',
   },
 
@@ -98,3 +105,6 @@ export const worldAuthEnabled = Boolean(config.world.signerAddress);
 
 /** True when we can reach the World service to push verdicts (Interface 3). */
 export const worldClientEnabled = Boolean(config.world.baseUrl && config.world.serviceToken);
+
+/** True when the one-time World ID verification gate (auth/worldVerify.ts) can run. */
+export const worldIdVerifyEnabled = Boolean(config.world.rpSigningKey && config.world.rpId);

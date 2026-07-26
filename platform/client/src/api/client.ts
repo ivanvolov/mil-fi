@@ -11,6 +11,7 @@ import type { LatLng } from '@shared/schemas/common';
 import type {
   Engagement,
   LedgerResponse,
+  MyUnit,
   OnboardBody,
   ReportSpotBody,
   RunEngagementBody,
@@ -214,6 +215,8 @@ export const api = {
   onboardUnit: (body: OnboardBody) => http<Unit>('POST', '/settlement/onboard', { body }),
 
   getUnits: () => http<Unit[]>('GET', '/settlement/units'),
+
+  getMyUnit: () => http<MyUnit>('GET', '/settlement/my-unit'),
 
   getUnitBalance: (id: string) =>
     http<UnitBalance>('GET', `/settlement/units/${encodeURIComponent(id)}/balance`),

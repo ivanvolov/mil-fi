@@ -46,6 +46,15 @@ export function useUnits() {
   });
 }
 
+/** The unit bound to the logged-in account (military demo account → its unit). */
+export function useMyUnit() {
+  return useQuery({
+    queryKey: ['settlement', 'my-unit'],
+    queryFn: () => api.getMyUnit(),
+    staleTime: 60_000,
+  });
+}
+
 export function useUnitBalance(unitId: string | null, accountId: string | null) {
   const demo = useDemoMode();
   return useQuery({

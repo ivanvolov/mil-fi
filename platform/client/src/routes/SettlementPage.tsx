@@ -8,19 +8,36 @@ import { AgentACard, AgentBCard } from '../components/settlement/VerdictCard';
 import { EngagementList } from '../components/settlement/EngagementList';
 import { LedgerPanel } from '../components/settlement/LedgerPanel';
 import { UnitBalancesPanel } from '../components/settlement/UnitBalancesPanel';
-import { useEngagements } from '../queries/useSettlement';
+import { useEngagements, useMyUnit } from '../queries/useSettlement';
 import { useSettlementStore } from '../stores/settlementStore';
+import { useMe } from '../queries/useMe';
+
+/** Role-specific framing of the same console: military files claims, government
+ *  oversees money + rules, admin sees the whole settlement story. */
+const HEADERS = {
+  military: { title: 'CLAIMS', sub: 'file engagement → agents verify → payout' },
+  government: { title: 'GOVERN', sub: 'rules · unit balances · evidence trail' },
+  default: { title: 'SETTLEMENT', sub: 'verified downing → autonomous payout' },
+} as const;
 
 /**
  * Settlement Console: the whole MilFi story on one screen — report → Agent A
  * (0G) → downing → Agent B (0G) → autonomous settle-agent paying DEFPOINT on
  * Hedera, with the immutable HCS evidence trail live on the right.
+ * Role-adaptive: military sees only its own claims (unit bound in the DB) and
+ * no all-units balance panel; government gets the oversight view.
  */
 export function SettlementPage() {
-  const engagements = useEngagements().data ?? [];
+  const role = useMe().data?.role;
+  const myUnitId = useMyUnit().data?.unitId ?? null;
+  const boundUnitId = role === 'military' ? myUnitId : null;
+  const engagements = (useEngagements().data ?? []).filter(
+    (e) => !boundUnitId || e.unitId === boundUnitId,
+  );
   const selectedId = useSettlementStore((s) => s.selectedEngagementId);
   const select = useSettlementStore((s) => s.selectEngagement);
   const running = useSettlementStore((s) => s.runStage) !== 'idle';
+  const header = HEADERS[role === 'military' || role === 'government' ? role : 'default'];
 
   // Default the detail view to the most recent engagement.
   useEffect(() => {
@@ -32,9 +49,9 @@ export function SettlementPage() {
   return (
     <div className="h-screen flex flex-col bg-bg text-ink">
       <header className="h-12 border-b border-line bg-panel flex items-center gap-5 px-5 shrink-0">
-        <div className="text-lg font-bold tracking-[0.25em]">SETTLEMENT</div>
+        <div className="text-lg font-bold tracking-[0.25em]">{header.title}</div>
         <div className="text-[10px] font-mono text-muted uppercase tracking-wider">
-          verified downing → autonomous payout
+          {header.sub}
         </div>
         <div className="flex-1" />
         <StatusStrip />
@@ -45,7 +62,7 @@ export function SettlementPage() {
 
         <aside className="w-[340px] shrink-0 border-r border-line p-3 flex flex-col gap-3 overflow-y-auto">
           <RunPanel />
-          <UnitBalancesPanel />
+          {role !== 'military' && <UnitBalancesPanel />}
         </aside>
 
         <main className="flex-1 min-w-0 p-3 flex flex-col gap-3 overflow-y-auto">
@@ -62,7 +79,7 @@ export function SettlementPage() {
               no engagement selected — run one from the left panel, or pick a past run below
             </div>
           )}
-          <EngagementList />
+          <EngagementList unitId={boundUnitId} />
         </main>
 
         <aside className="w-[380px] shrink-0 min-h-0">

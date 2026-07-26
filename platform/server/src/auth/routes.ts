@@ -6,6 +6,7 @@ import {
   cookieOptions,
   createSession,
   destroySession,
+  isWorldVerified,
   normalizeCode,
   hashPassword,
   lookupSession,
@@ -51,7 +52,12 @@ export async function registerAuthRoutes(app: FastifyInstance, c: AuthCollection
 
       const session = await createSession(c, invite);
       reply.setCookie(COOKIE_NAME, session._id, cookieOptions());
-      return { ok: true, label: invite.label, role: session.role ?? 'admin' };
+      return {
+        ok: true,
+        label: invite.label,
+        role: session.role ?? 'admin',
+        worldVerified: isWorldVerified(session),
+      };
     },
   );
 
@@ -76,6 +82,6 @@ export async function registerAuthRoutes(app: FastifyInstance, c: AuthCollection
     if (!unsigned.valid || !unsigned.value) return reply.status(401).send({ code: 'UNAUTHENTICATED' });
     const row = await lookupSession(c, unsigned.value);
     if (!row) return reply.status(401).send({ code: 'UNAUTHENTICATED' });
-    return { label: row.label, role: row.role ?? 'admin' };
+    return { label: row.label, role: row.role ?? 'admin', worldVerified: isWorldVerified(row) };
   });
 }

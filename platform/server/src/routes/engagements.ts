@@ -92,6 +92,16 @@ export async function registerEngagementRoutes(app: FastifyInstance, c: Collecti
     return rows.map(publicUnit);
   });
 
+  // The unit bound to the logged-in account (pre-designed demo users carry a
+  // `unitId` on their invite row). `unit` is null until the unit is onboarded.
+  app.get('/settlement/my-unit', async (req) => {
+    const code = req.session?.code;
+    const invite = code ? await c.invites.findOne({ _id: code }) : null;
+    const unitId = (invite?.unitId as string | undefined) ?? null;
+    const unit = unitId ? ((await c.units.findOne({ _id: unitId })) as UnitDoc | null) : null;
+    return { unitId, unit: unit ? publicUnit(unit) : null };
+  });
+
   app.post<{ Body: unknown }>('/settlement/engagements', async (req) => {
     const body = RunBody.parse(req.body);
     try {

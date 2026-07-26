@@ -68,3 +68,16 @@ services:
         sync: false
       - key: WORLD_SIGNER_ADDRESS
         sync: false
+
+      # World ID one-time verification gate (server/src/auth/worldVerify.ts).
+      # Same Developer Portal app as app/my-first-mini-app/.env.local — reusing it
+      # instead of provisioning a second Relying Party.
+      - key: RP_SIGNING_KEY
+        sync: false
+      - key: RP_ID
+        value: "rp_ce4e751875b77790"
+
+      # Non-secret — read client-side by the World ID QR widget (VITE_ vars are
+      # baked into the built bundle at `npm run build:all` time).
+      - key: VITE_WORLD_APP_ID
+        value: "app_3e54fa415d153fbd5fd72033452b27f8"

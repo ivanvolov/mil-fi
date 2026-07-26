@@ -64,7 +64,9 @@ export function AppRail() {
       roles: ['admin', 'spotter'],
     },
     {
-      label: 'Settle',
+      // Same console, role-specific framing: military files claims there,
+      // government governs rules/balances, admin sees the full settlement story.
+      label: role === 'military' ? 'Claims' : role === 'government' ? 'Govern' : 'Settle',
       to: '/settlement',
       icon: Scale,
       active: (p) => p === '/settlement',

@@ -16,10 +16,13 @@ import { hashPassword, type InviteRow, type Role } from '../auth/session.js';
 
 const PASSWORD = process.env.DEMO_PASSWORD ?? 'milfi';
 
-const USERS: Array<{ username: string; role: Role; label: string }> = [
+/** Pre-designed accounts only — no invite codes. The military account is bound
+ * to its settlement unit here, in the DB (`unitId` on the invite row), so the
+ * console can show that unit's claims/wallet without any extra linking UI. */
+const USERS: Array<{ username: string; role: Role; label: string; unitId?: string }> = [
   { username: 'admin', role: 'admin', label: 'Admin · demo operator' },
   { username: 'government', role: 'government', label: 'Government · Orb' },
-  { username: 'military', role: 'military', label: 'Military · Passport' },
+  { username: 'military', role: 'military', label: 'Military · Passport', unitId: 'unit-alpha' },
   { username: 'spotter', role: 'spotter', label: 'Spotter · Selfie' },
 ];
 
@@ -36,6 +39,7 @@ async function main() {
       username: u.username,
       passwordHash,
       createdAt: now,
+      ...(u.unitId ? { unitId: u.unitId } : {}),
     };
     await collections.invites.replaceOne({ username: u.username }, row, { upsert: true });
   }

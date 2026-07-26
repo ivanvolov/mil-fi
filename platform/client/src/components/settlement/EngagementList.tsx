@@ -10,9 +10,11 @@ const OUTCOME_COLOR: Record<SettlementOutcome, string> = {
 };
 
 /** Recent engagements — click to review any past trail (paid next to rejected
- *  is the side-by-side story beat). */
-export function EngagementList() {
-  const engagements = useEngagements().data ?? [];
+ *  is the side-by-side story beat). Pass `unitId` to scope the list to one unit
+ *  (military sees only its own claims). */
+export function EngagementList({ unitId }: { unitId?: string | null }) {
+  const all = useEngagements().data ?? [];
+  const engagements = unitId ? all.filter((e) => e.unitId === unitId) : all;
   const selectedId = useSettlementStore((s) => s.selectedEngagementId);
   const select = useSettlementStore((s) => s.selectEngagement);
 

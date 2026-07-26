@@ -147,6 +147,9 @@ export type RunEngagementBody = {
 
 export type UnitBalance = { accountId: string | null; balance: number };
 
+/** The unit bound to the logged-in account (null when the account has none). */
+export type MyUnit = { unitId: string | null; unit: Unit | null };
+
 /** A civilian spotter sighting: one image → Agent A verdict, journaled as `report`. */
 export type Spot = {
   _id: string;
