@@ -9,7 +9,12 @@ import { randomContactInSector } from '@algos/threat-placement/threat-sim';
  *  (MapLibre) map hosts so the button (in LeftRail) can trigger whichever one is mounted. */
 
 export const DEMO_STRIKE_DURATION_MS = 3200;
-export const DEMO_STRIKE_ARM_FRACTION = 0.6;
+
+export const FLYING_DRONE_SVG =
+  '<svg width="16" height="16" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#f59e0b" stroke="#fff7ed" stroke-width="0.75"/></svg>';
+export const INTERCEPTOR_ICON_SVG =
+  '<svg width="16" height="16" viewBox="0 0 14 14"><path d="M7 13 L13 1 L1 1 Z" fill="#06b6d4" stroke="#e7fbff" stroke-width="0.75"/></svg>';
+export const EXPLOSION_HTML = '<div class="hoc-explosion"></div><div class="hoc-explosion-ring"></div>';
 
 const METERS_PER_LAT_DEG = 111320;
 function metersPerLngDeg(lat: number): number {
@@ -64,6 +69,27 @@ export function pickRandomLiveThreat<T extends { geometry: { detonation: unknown
   const candidates = threats.filter((t) => t.geometry.detonation);
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)]!;
+}
+
+/** How far along the threat's path (0..1) the intercept happens — always well short of the
+ *  original target, so the animation reads as "shot down before it got there." */
+export function pickInterceptFraction(): number {
+  return 0.5 + Math.random() * 0.2; // 0.5–0.7
+}
+
+/** Picks the interceptor to run the animation: prefers `preferCode` (e.g. "L-2") if present,
+ *  else whichever interceptor is closest to the intercept point, else null if there are none. */
+export function pickShooter<T extends { code: string; position: LatLng }>(
+  interceptors: T[],
+  interceptPoint: LatLng,
+  preferCode?: string,
+): T | null {
+  if (interceptors.length === 0) return null;
+  const preferred = preferCode ? interceptors.find((i) => i.code === preferCode) : undefined;
+  if (preferred) return preferred;
+  return interceptors.reduce((closest, i) =>
+    haversineKm(i.position, interceptPoint) < haversineKm(closest.position, interceptPoint) ? i : closest,
+  interceptors[0]!);
 }
 
 /** Builds the body for one inbound threat near `center`, ETA ~1.5–3 min out — same math as

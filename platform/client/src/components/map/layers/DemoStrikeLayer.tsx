@@ -4,28 +4,28 @@ import { useMap } from 'react-leaflet';
 import { useParams } from 'react-router-dom';
 import type { LayerFull } from '@shared/schemas/layer-full';
 import type { Threat } from '@shared/schemas/threat';
-import { haversineKm } from '@shared/distance';
 import { useUiStore } from '../../../stores/uiStore';
 import { useCreateThreat } from '../../../queries/useMutations';
 import {
-  DEMO_STRIKE_ARM_FRACTION,
   DEMO_STRIKE_DURATION_MS,
+  EXPLOSION_HTML,
+  FLYING_DRONE_SVG,
+  INTERCEPTOR_ICON_SVG,
   buildFlightPath,
   buildRandomThreatBody,
   cumulativeKm,
+  pickInterceptFraction,
   pickRandomLiveThreat,
+  pickShooter,
   pointAtFraction,
 } from '../demoStrike';
-
-const FLYING_DRONE_SVG =
-  '<svg width="16" height="16" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#f59e0b" stroke="#fff7ed" stroke-width="0.75"/></svg>';
-const EXPLOSION_HTML = '<div class="hoc-explosion"></div><div class="hoc-explosion-ring"></div>';
 
 /** Headless engine for the demo strike animation on the 2D (Leaflet) map. No UI of its own —
  *  the button lives in LeftRail and drives this via `demoStrikeRequestId` in uiStore, so it
  *  works the same way regardless of which map host is mounted. Picks a random live threat (or
- *  spawns one near the current view if none exist), animates it flying to its detonation point
- *  while the nearest interceptor "tracks" it, ending in a hit effect. */
+ *  spawns one near the current view if none exist), launches an interceptor (L-2 by preference)
+ *  to meet it partway, and detonates both at the intercept point — before the threat ever
+ *  reaches its original target. */
 export function DemoStrikeLayer({ data }: { data: LayerFull }) {
   const map = useMap();
   const { slug = 'vzil-1' } = useParams();
@@ -79,22 +79,28 @@ export function DemoStrikeLayer({ data }: { data: LayerFull }) {
     const det = threat.geometry.detonation!;
     const path = buildFlightPath(threat.position, { ...threat.geometry, detonation: det });
     const cum = cumulativeKm(path);
-    const shooter = data.interceptors.length
-      ? data.interceptors.reduce((closest, i) =>
-          haversineKm(i.position, det) < haversineKm(closest.position, det) ? i : closest,
-        data.interceptors[0]!)
-      : null;
+    const interceptFrac = pickInterceptFraction();
+    const interceptPoint = pointAtFraction(path, cum, interceptFrac);
+    const shooter = pickShooter(data.interceptors, interceptPoint, 'L-2');
 
-    setStatus(`Tracking ${threat.code}…`);
+    setStatus(shooter ? `${shooter.code} launching on ${threat.code}…` : `Tracking ${threat.code}…`);
 
     const drone = L.marker([path[0]!.lat, path[0]!.lng], {
       icon: L.divIcon({ className: 'hoc-flying-drone', html: FLYING_DRONE_SVG, iconSize: [0, 0], iconAnchor: [0, 0] }),
       interactive: false,
     }).addTo(group);
 
-    const tracer = shooter
+    const interceptorPath = shooter ? [shooter.position, interceptPoint] : null;
+    const interceptorCum = interceptorPath ? cumulativeKm(interceptorPath) : null;
+    const interceptor = shooter
+      ? L.marker([shooter.position.lat, shooter.position.lng], {
+          icon: L.divIcon({ className: 'hoc-interceptor-missile', html: INTERCEPTOR_ICON_SVG, iconSize: [0, 0], iconAnchor: [0, 0] }),
+          interactive: false,
+        }).addTo(group)
+      : null;
+    const trail = shooter
       ? L.polyline([[shooter.position.lat, shooter.position.lng], [shooter.position.lat, shooter.position.lng]], {
-          color: '#22c55e', weight: 2, dashArray: '3 4', opacity: 0,
+          color: '#06b6d4', weight: 2, dashArray: '2 3', opacity: 0.85,
         }).addTo(group)
       : null;
 
@@ -102,12 +108,14 @@ export function DemoStrikeLayer({ data }: { data: LayerFull }) {
     const step = (now: number) => {
       if (start === null) start = now;
       const frac = Math.min(1, (now - start) / DEMO_STRIKE_DURATION_MS);
-      const pos = pointAtFraction(path, cum, frac);
-      drone.setLatLng([pos.lat, pos.lng]);
+      // The threat only ever flies as far as the intercept point — it never reaches `det`.
+      const dronePos = pointAtFraction(path, cum, frac * interceptFrac);
+      drone.setLatLng([dronePos.lat, dronePos.lng]);
 
-      if (tracer && shooter && frac >= DEMO_STRIKE_ARM_FRACTION) {
-        tracer.setLatLngs([[shooter.position.lat, shooter.position.lng], [pos.lat, pos.lng]]);
-        tracer.setStyle({ opacity: 0.9 });
+      if (interceptor && interceptorPath && interceptorCum) {
+        const iPos = pointAtFraction(interceptorPath, interceptorCum, frac);
+        interceptor.setLatLng([iPos.lat, iPos.lng]);
+        trail?.setLatLngs([[shooter!.position.lat, shooter!.position.lng], [iPos.lat, iPos.lng]]);
       }
 
       if (frac < 1) {
@@ -116,13 +124,14 @@ export function DemoStrikeLayer({ data }: { data: LayerFull }) {
       }
 
       group.removeLayer(drone);
-      if (tracer) group.removeLayer(tracer);
-      const boom = L.marker([det.lat, det.lng], {
+      if (interceptor) group.removeLayer(interceptor);
+      if (trail) group.removeLayer(trail);
+      const boom = L.marker([interceptPoint.lat, interceptPoint.lng], {
         icon: L.divIcon({ className: 'hoc-explosion-marker', html: EXPLOSION_HTML, iconSize: [0, 0], iconAnchor: [0, 0] }),
         interactive: false,
       }).addTo(group);
       window.setTimeout(() => group.removeLayer(boom), 900);
-      setStatus(`${threat.code} neutralized`);
+      setStatus(shooter ? `${threat.code} intercepted by ${shooter.code}` : `${threat.code} neutralized`);
       window.setTimeout(() => setStatus(null), 2000);
       rafRef.current = null;
       runningRef.current = false;

@@ -126,6 +126,8 @@ body { background: #0d1117; color: #e7e9ea; }
 /* demo strike animation: flying drone marker + hit explosion */
 .hoc-flying-drone { background: transparent; border: 0; filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.9)); }
 .hoc-flying-drone svg { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); }
+.hoc-interceptor-missile { background: transparent; border: 0; filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.9)); }
+.hoc-interceptor-missile svg { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); }
 
 .hoc-explosion-marker { background: transparent; border: 0; }
 .hoc-explosion-marker .hoc-explosion,

@@ -17,20 +17,19 @@ import {
 import { useOrchestrationFocus } from '../../lib/orchestrationFocus';
 import { useMe } from '../../queries/useMe';
 import { glyphHtml, threatGlyphHtml } from './glyphs';
-import { haversineKm } from '@shared/distance';
 import {
-  DEMO_STRIKE_ARM_FRACTION,
   DEMO_STRIKE_DURATION_MS,
+  EXPLOSION_HTML,
+  FLYING_DRONE_SVG,
+  INTERCEPTOR_ICON_SVG,
   buildFlightPath,
   buildRandomThreatBody,
   cumulativeKm,
+  pickInterceptFraction,
   pickRandomLiveThreat,
+  pickShooter,
   pointAtFraction,
 } from './demoStrike';
-
-const FLYING_DRONE_SVG =
-  '<svg width="16" height="16" viewBox="0 0 14 14"><path d="M7 1 L13 13 L1 13 Z" fill="#f59e0b" stroke="#fff7ed" stroke-width="0.75"/></svg>';
-const EXPLOSION_HTML = '<div class="hoc-explosion"></div><div class="hoc-explosion-ring"></div>';
 
 /** CARTO GL basemaps (OpenMapTiles schema, no API key).
  *  day = Voyager (full-color), night = Dark Matter (matches the app's dark UI). */
@@ -737,13 +736,11 @@ export function Map3DHost({ data }: { data: LayerFull }) {
     const det = threat.geometry.detonation!;
     const path = buildFlightPath(threat.position, { ...threat.geometry, detonation: det });
     const cum = cumulativeKm(path);
-    const shooter = data.interceptors.length
-      ? data.interceptors.reduce((closest, i) =>
-          haversineKm(i.position, det) < haversineKm(closest.position, det) ? i : closest,
-        data.interceptors[0]!)
-      : null;
+    const interceptFrac = pickInterceptFraction();
+    const interceptPoint = pointAtFraction(path, cum, interceptFrac);
+    const shooter = pickShooter(data.interceptors, interceptPoint, 'L-2');
 
-    setDemoStrikeStatus(`Tracking ${threat.code}…`);
+    setDemoStrikeStatus(shooter ? `${shooter.code} launching on ${threat.code}…` : `Tracking ${threat.code}…`);
 
     const droneEl = document.createElement('div');
     droneEl.className = 'hoc-flying-drone';
@@ -753,23 +750,39 @@ export function Map3DHost({ data }: { data: LayerFull }) {
       .addTo(map);
     demoStrikeMarkersRef.current.push(drone);
 
-    ensureGeojsonSource(map, 'hoc-demo-tracer', fc([]));
-    if (!map.getLayer('hoc-demo-tracer-line')) {
-      map.addLayer({
-        id: 'hoc-demo-tracer-line', type: 'line', source: 'hoc-demo-tracer',
-        paint: { 'line-color': '#22c55e', 'line-width': 2, 'line-dasharray': [3, 4], 'line-opacity': 0.9 },
-      });
+    const interceptorPath = shooter ? [shooter.position, interceptPoint] : null;
+    const interceptorCum = interceptorPath ? cumulativeKm(interceptorPath) : null;
+    let interceptor: maplibregl.Marker | null = null;
+    if (shooter) {
+      const interceptorEl = document.createElement('div');
+      interceptorEl.className = 'hoc-interceptor-missile';
+      interceptorEl.innerHTML = INTERCEPTOR_ICON_SVG;
+      interceptor = new maplibregl.Marker({ element: interceptorEl })
+        .setLngLat([shooter.position.lng, shooter.position.lat])
+        .addTo(map);
+      demoStrikeMarkersRef.current.push(interceptor);
+
+      ensureGeojsonSource(map, 'hoc-demo-tracer', fc([]));
+      if (!map.getLayer('hoc-demo-tracer-line')) {
+        map.addLayer({
+          id: 'hoc-demo-tracer-line', type: 'line', source: 'hoc-demo-tracer',
+          paint: { 'line-color': '#06b6d4', 'line-width': 2, 'line-dasharray': [2, 3], 'line-opacity': 0.85 },
+        });
+      }
     }
 
     let start: number | null = null;
     const step = (now: number) => {
       if (start === null) start = now;
       const frac = Math.min(1, (now - start) / DEMO_STRIKE_DURATION_MS);
-      const pos = pointAtFraction(path, cum, frac);
-      drone.setLngLat([pos.lng, pos.lat]);
+      // The threat only ever flies as far as the intercept point — it never reaches `det`.
+      const dronePos = pointAtFraction(path, cum, frac * interceptFrac);
+      drone.setLngLat([dronePos.lng, dronePos.lat]);
 
-      if (shooter && frac >= DEMO_STRIKE_ARM_FRACTION) {
-        ensureGeojsonSource(map, 'hoc-demo-tracer', fc([lineFeature([shooter.position, pos], {})]));
+      if (interceptor && interceptorPath && interceptorCum) {
+        const iPos = pointAtFraction(interceptorPath, interceptorCum, frac);
+        interceptor.setLngLat([iPos.lng, iPos.lat]);
+        ensureGeojsonSource(map, 'hoc-demo-tracer', fc([lineFeature([shooter!.position, iPos], {})]));
       }
 
       if (frac < 1) {
@@ -779,19 +792,23 @@ export function Map3DHost({ data }: { data: LayerFull }) {
 
       drone.remove();
       demoStrikeMarkersRef.current = demoStrikeMarkersRef.current.filter((m) => m !== drone);
-      ensureGeojsonSource(map, 'hoc-demo-tracer', fc([]));
+      if (interceptor) {
+        interceptor.remove();
+        demoStrikeMarkersRef.current = demoStrikeMarkersRef.current.filter((m) => m !== interceptor);
+        ensureGeojsonSource(map, 'hoc-demo-tracer', fc([]));
+      }
 
       const boomEl = document.createElement('div');
       boomEl.className = 'hoc-explosion-marker';
       boomEl.innerHTML = EXPLOSION_HTML;
-      const boom = new maplibregl.Marker({ element: boomEl }).setLngLat([det.lng, det.lat]).addTo(map);
+      const boom = new maplibregl.Marker({ element: boomEl }).setLngLat([interceptPoint.lng, interceptPoint.lat]).addTo(map);
       demoStrikeMarkersRef.current.push(boom);
       window.setTimeout(() => {
         boom.remove();
         demoStrikeMarkersRef.current = demoStrikeMarkersRef.current.filter((m) => m !== boom);
       }, 900);
 
-      setDemoStrikeStatus(`${threat.code} neutralized`);
+      setDemoStrikeStatus(shooter ? `${threat.code} intercepted by ${shooter.code}` : `${threat.code} neutralized`);
       window.setTimeout(() => setDemoStrikeStatus(null), 2000);
       demoStrikeRafRef.current = null;
       demoStrikeRunningRef.current = false;
