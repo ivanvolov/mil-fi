@@ -12,6 +12,7 @@ refused. It sits on top of an air-defense coordination map we already run operat
 own counter-UAV contracting company in Ukraine.
 
 **Live demo:** https://mil-fi.onrender.com
+**World Mini App (Selfie Check / AgentKit flows):** https://worldcoin.org/mini-app?app_id=app_3e54fa415d153fbd5fd72033452b27f8
 
 Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs) — start at
 [`docs/01-story.md`](./docs/01-story.md).
@@ -113,6 +114,23 @@ Settlement-level evidence (the authorization actually gating Hedera money):
   ("no human backing"), so the settle-agent refused the payout — no transaction exists for it.
   This is the required negative case: the check isn't cosmetic, it genuinely gates whether money
   moves.
+
+## World Selfie Check — spotter eligibility, not login
+
+Spotters are civilians on the front line reporting an incoming threat in real time — the entry
+point of the whole funnel. That report has to happen in seconds, from wherever they are, which
+rules out the two higher tiers as the eligibility bar: an Orb isn't reachable in a frontline city,
+and a passport-document check has too much friction for "I see a Shahed overhead right now."
+Selfie Check is the credential that's actually fast enough to require *before* a report counts —
+low friction for a legitimate spotter, but still enough of a bar to keep bots from flooding the
+system with fake reports.
+
+So Selfie Check gates `report:submit` — no verified selfie, no report accepted — while payout
+release stays gated at Orb tier further down the pipeline (see the tier ladder in
+[`docs/03-architecture-bounty-map.md`](./docs/03-architecture-bounty-map.md)). That's an
+eligibility/abuse-prevention signal doing real access-control work, not a generic "login with
+World" screen. Full developer + user testing feedback for the beta:
+[`docs/world-feedback.md`](./docs/world-feedback.md).
 
 ## 0G Compute — verification agents
 

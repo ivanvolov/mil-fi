@@ -28,15 +28,15 @@ function readPersistedString(field: 'lastLayerSlug'): string | null {
 }
 
 /** Root landing: send each role to its workspace — spotters to /spotter,
- *  government to /settlement; everyone else gets a sector slug that actually
- *  exists (prefers the last-visited one if still valid, else the first). */
+ *  government to /settlement; military and admin land on Sector, a layer
+ *  slug that actually exists (prefers the last-visited one if still valid,
+ *  else the first). */
 function LandingRedirect() {
   const meQ = useMe();
   const layersQ = useLayers();
   if (meQ.isLoading) return null;
   const role = meQ.data?.role;
   if (role === 'spotter') return <Navigate to="/spotter" replace />;
-  if (role === 'military') return <Navigate to="/engagement" replace />;
   if (role === 'government') return <Navigate to="/government" replace />;
   if (layersQ.isLoading) return null;
   const layers = layersQ.data ?? [];
