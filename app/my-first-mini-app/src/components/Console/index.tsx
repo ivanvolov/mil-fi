@@ -148,6 +148,9 @@ export const Console = () => {
             // Accept v3 proofs too: operators may hold older credentials, and
             // rejecting them would look like a broken app rather than a policy.
             allow_legacy_proofs
+            // Staging: adds a "use the simulator" link (simulator.worldcoin.org)
+            // to the widget, so verification is testable without a physical Orb.
+            environment="staging"
             onSuccess={onSuccess}
             onError={(code) =>
               setPhase({ name: 'error', message: `World ID error: ${code}` })
