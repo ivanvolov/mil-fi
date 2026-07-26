@@ -38,7 +38,7 @@ that bind the submission and the final pre-submission checklist.
   autonomous payouts — the AgentKit check determines whether money moves, including the
   refusal path for a non-backed bot.
 - **World — Selfie Check Beta:** Selfie Check as the spotter eligibility signal, with the
-  required testing documentation in [`world-feedback.md`](./world-feedback.md) (developer
+  required testing documentation in [`world-submission.md`](./02-bounty/world-submission.md) (developer
   feedback + user feedback).
 
 ## Per-sponsor requirements to honor
@@ -52,7 +52,7 @@ that bind the submission and the final pre-submission checklist.
 - **World requires a working end-to-end flow, not a wrapper** — including the negative case
   (payout refused for a non-backed bot).
 - **World beta tracks require testing documentation** with *both* developer feedback
-  (SDK/docs friction) and user feedback (UX, drop-off) — [`world-feedback.md`](./world-feedback.md).
+  (SDK/docs friction) and user feedback (UX, drop-off) — [`world-submission.md`](./02-bounty/world-submission.md).
 - **Hedera requires** a public repo with a README covering setup, architecture, and the
   payment flow; ≥1 agent-executed token operation on Testnet with a HashScan trail; for the
   No-Solidity track, ≥2 native services and zero `.sol` files.
@@ -91,4 +91,4 @@ that bind the submission and the final pre-submission checklist.
       it (bot → 402, unregistered → 403, registered → signed authorization)
 - [x] End-to-end flow works, including the negative case
 - [x] Selfie Check used as a real eligibility signal, not login
-- [x] `world-feedback.md` — developer feedback + user feedback sections filled
+- [x] `world-submission.md` — developer feedback + user feedback sections filled

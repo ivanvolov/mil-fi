@@ -29,7 +29,7 @@ Full story, architecture, and per-sponsor requirement mapping: [`docs/`](./docs)
 | 0G | Proof-of-inference artifact | ✅ Done | Console screenshot + request/trace ids, see below |
 | 0G | Contract addresses | N/A by design | No contracts deployed — the whole project is smart-contract-free (No-Solidity constraint); the on-chain trail is Hedera (HTS `0.0.9753000`, HCS `0.0.9753001`). Agentic ID is only required for Agentic-ID projects, which this is not |
 | World | AgentKit gates payout, negative case works | ✅ Done | Agent registered in AgentBook on World Chain ([tx](https://worldscan.org/tx/0xb9ec0636ab16b11ab7e40d08eda9761af1262282ed4f5085ed51de982bdff3dc)) + 402/403/authorized smoke — [World section](#world-agentkit--human-backed-payout-authorization) below |
-| World | Selfie/Identity Beta feedback doc | ✅ Done | [`docs/world-feedback.md`](./docs/world-feedback.md) — Selfie + AgentKit sections |
+| World | Selfie/Identity Beta feedback doc | ✅ Done | [`docs/02-bounty/world-submission.md`](./docs/02-bounty/world-submission.md) — Selfie + AgentKit sections |
 | All | Video (2:00–2:59) | ✅ Done | Submitted with the ETHGlobal form |
 
 ## Repo layout
@@ -130,7 +130,7 @@ release stays gated at Orb tier further down the pipeline (see the tier ladder i
 [`docs/03-architecture-bounty-map.md`](./docs/03-architecture-bounty-map.md)). That's an
 eligibility/abuse-prevention signal doing real access-control work, not a generic "login with
 World" screen. Full developer + user testing feedback for the beta:
-[`docs/world-feedback.md`](./docs/world-feedback.md).
+[`docs/02-bounty/world-submission.md`](./docs/02-bounty/world-submission.md).
 
 ## 0G Compute — verification agents
 

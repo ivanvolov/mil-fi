@@ -1,19 +1,37 @@
-# World Feedback — Selfie Check Beta + AgentKit Testing Documentation
+# World — submission form answer & feedback
 
-Project: **MilFi** — defense-tasking platform where payouts are released only to verified humans.
-Selfie Check is used as the entry-level clearance tier (BASIC) in a three-tier trust ladder
-(Selfie → Passport → Orb) that gates what an operator may do — an abuse-prevention /
-eligibility signal, not a generic login.
+Tracks we're applying to (World): **AgentKit New Use Cases**, **Selfie Check Beta**.
 
-Covers both required sections: **developer feedback** (SDK/API friction, docs gaps, setup
-issues) and **user feedback** (UX friction, comprehension, drop-off, camera/selfie flow),
-plus the "preferred feedback" topics from the track description.
+## How are you using this Protocol / API?
 
----
+World ID is the trust ladder for the whole system.
+AgentKit then gates whether a claim-agent is human-backed before our service will authorize a
+payout. Selfie Check clears spotters to submit threat reports, a Passport credential clears military units to receive payouts, and Orb clears government administrators to set payout policy — the credential completed *is* the role.
 
-## 1. Developer feedback
+## Link to the line of code where the tech is used
 
-### Integration experience & time-to-integrate
+- Credential → role mapping (Selfie/Passport/Orb):
+  https://github.com/ivanvolov/mil-fi/blob/129d6cf2f8eb0c3e344ad65b5fbfcd854ce59095/platform/server/src/auth/worldVerify.ts#L29-L59
+- Verify handler (server-side v4 verify call):
+  https://github.com/ivanvolov/mil-fi/blob/129d6cf2f8eb0c3e344ad65b5fbfcd854ce59095/platform/server/src/auth/worldVerify.ts#L78-L121
+- AgentKit human-backing check:
+  https://github.com/ivanvolov/mil-fi/blob/129d6cf2f8eb0c3e344ad65b5fbfcd854ce59095/app/my-first-mini-app/src/lib/agentkit.ts#L134-L174
+
+## How easy is it to use the API / Protocol? (1 = very difficult, 10 = very easy)
+
+**7** — verify calls and exported primitives worked cleanly once we found the right shapes;
+docked for the missing Selfie Check SDK reference during the hackathon, undocumented v4
+response shape, legacy-vs-4.0 preset mixing (`selfieCheckLegacy`/`passport()` requiring
+different `allow_legacy_proofs` values), and AgentKit docs only covering the Hono/x402 path.
+
+## Additional feedback for the Sponsor
+
+Required testing documentation for the Selfie Check / AgentKit beta tracks — developer feedback,
+user feedback, and AgentKit feedback.
+
+### 1. Developer feedback
+
+#### Integration experience & time-to-integrate
 
 - Integrating the Selfie Check widget + verify call took **~40 minutes even with an AI
   coding agent doing the work** — for a "low-friction" credential that is too much, and a
@@ -27,7 +45,7 @@ plus the "preferred feedback" topics from the track description.
   `https://developer.world.org/api/v4/verify/<rp_id>` and read `results[].identifier`.
   Once we found that shape, it worked first try.
 
-### Where the docs helped
+#### Where the docs helped
 
 - The IDKit package itself is well-typed; discovering the credential presets
   (`selfieCheckLegacy`, `secureDocumentLegacy`, `orbLegacy`) from the TypeScript types was
@@ -36,7 +54,7 @@ plus the "preferred feedback" topics from the track description.
   presenting the method chooser — is excellent design. It deleted an entire chooser UI we
   had planned to build.
 
-### Where the docs got in the way (main friction)
+#### Where the docs got in the way (main friction)
 
 1. **Selfie Check SDK reference was "coming soon" during the hackathon.** We shipped it by
    reading the IDKit type definitions and guessing. A one-page "Selfie Check end-to-end"
@@ -59,27 +77,25 @@ plus the "preferred feedback" topics from the track description.
    requires re-setting `integration_url` in the portal; a "localhost developer mode" would
    remove the biggest setup tax of the whole stack.
 
-### What proves the document, not the person's attributes
+#### What proves the document, not the person's attributes
 
 - `secureDocumentLegacy` proves *a document was presented*, not any attribute of it
   (e.g. nationality) — attributes need a separate Identity Check flow. This distinction is
   important and easy to miss; it changed our tier design mid-build. Deserves a prominent
   call-out in the credential docs.
 
-### Overall developer sentiment
+#### Overall developer sentiment
 
 - The primitive is right: **one `nullifier` per human across credentials** is exactly what a
   sybil-resistant payout system needs, and the server-side verify is simple.
   We would keep Selfie Check and expand it — *if* the SDK reference ships and the
   staging/legacy sharp edges get sanded down.
 
----
-
-## 2. User feedback
+### 2. User feedback
 
 Tested with non-technical users (founder + test users) on real phones via World App.
 
-### Comprehension
+#### Comprehension
 
 - "Selfie Check" as a name is understood instantly — unlike "Orb" or "proof of personhood",
   which needed explanation every time. Users correctly guessed what would happen before
@@ -88,7 +104,7 @@ Tested with non-technical users (founder + test users) on real phones via World 
   as "levels of ID strength" without prompting. Good mental model for a tiered product like
   ours — users grasped "selfie gets you in, passport unlocks more" in one sentence.
 
-### UX friction & drop-off points
+#### UX friction & drop-off points
 
 1. **The selfie flow repeatedly failed with a generic error.** Our founder attempted the
    selfie **five times in a row** and every attempt ended with a "something went wrong"
@@ -106,7 +122,7 @@ Tested with non-technical users (founder + test users) on real phones via World 
    Selfie is weaker than Orb; in our app we surface it as tier levels, but World App itself
    could communicate "basic verification" so user expectation matches what apps grant.
 
-### Value of Selfie Check assurance in practice
+#### Value of Selfie Check assurance in practice
 
 - It let us **act**: we gate report submission at Selfie tier while keeping payout release
   at Orb tier. Without Selfie Check, our only options were "anonymous" or "Orb" — a gap so
@@ -114,7 +130,7 @@ Tested with non-technical users (founder + test users) on real phones via World 
 - We deliberately do **not** use it as the uniqueness guarantee (payouts key on the Orb-grade
   `humanId`); as a liveness/eligibility gate its assurance level was sufficient.
 
-### POH (Orb) vs Selfie cohorts
+#### POH (Orb) vs Selfie cohorts
 
 - Sample too small for fraud/retention differences during a weekend hackathon. Directionally:
   Selfie converts near-100% of willing users in under a minute; Orb converted 0% of new users
@@ -122,7 +138,7 @@ Tested with non-technical users (founder + test users) on real phones via World 
   where our tier ladder currently trusts the document/Orb credentials — we'd use it to decide
   step-up prompts.
 
-### Overall user sentiment
+#### Overall user sentiment
 
 - Users trusted the flow (World App branding carries it) and were not spooked by taking a
   selfie. But trust dies on the fifth unexplained failure. Honest verdict from the beta:
@@ -130,15 +146,13 @@ Tested with non-technical users (founder + test users) on real phones via World 
   Fix the failure feedback and we would keep Selfie Check as our entry tier without
   hesitation.
 
----
-
-## 3. AgentKit — developer feedback
+### 3. AgentKit — developer feedback
 
 Context: we use AgentKit to gate **treasury payouts** — a claim-agent files payout claims
 for a military unit, and the service refuses to sign an authorization unless the caller
 proves it is a registered, human-backed agent (AgentBook lookup on World Chain).
 
-### Integration experience & time-to-integrate
+#### Integration experience & time-to-integrate
 
 - **~half a day** from zero to a passing end-to-end smoke (bot → 402, unregistered
   signer → 403 `not_human_backed`, registered/dev-stub agent → signed authorization),
@@ -150,7 +164,7 @@ proves it is a registered, human-backed agent (AgentBook lookup on World Chain).
   is a Next.js route handler — and the primitives made that a clean ~150-line integration
   instead of a framework fight. Keep exporting the core.
 
-### Where the docs got in the way
+#### Where the docs got in the way
 
 1. **The integrate guide only shows the Hono + x402 middleware path.** Anyone on Next.js /
    Express / Fastify has to reverse-engineer the flow from `dist/`. A "verify an AgentKit
@@ -171,7 +185,7 @@ proves it is a registered, human-backed agent (AgentBook lookup on World Chain).
    `AgentKitStorage` interface exists for usage counters — the docs should say plainly
    that nonce state needs it too in multi-instance deployments.
 
-### Value of the primitive
+#### Value of the primitive
 
 - `lookupHuman(address) → anonymous humanId | null` is exactly the right shape: one call,
   no PII, and "extra agent wallets all resolve to the same human" is precisely the

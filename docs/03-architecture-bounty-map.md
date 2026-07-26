@@ -43,7 +43,7 @@ cannot impersonate ten units to multiply claims.
   defense-contracting economy is the new workflow and trust model this track asks for.
 - *Selfie Check Beta* — Selfie Check is a real eligibility signal (the right to submit threat
   reports), not a generic login. The required testing documentation — developer feedback and
-  user feedback — lives in [`world-feedback.md`](./world-feedback.md).
+  user feedback — lives in [`world-submission.md`](./02-bounty/world-submission.md).
 - *Identity Check* — the document tier explains why the attribute is needed (payout
   accountability) and minimizes data collection: we never store the document, only
   "verified / not verified + jurisdiction allowed".

@@ -5,7 +5,7 @@ MilFi turns Ukraine's counter-UAV "points-for-kills" incentive system into an on
 ## Reading order
 
 - [01 — Story & problem](./01-story.md) — who we are, how the real-world system works today, and why it's broken
-- [02 — Bounty texts](./02-bounty/) — raw bounty texts from the three sponsors (`hedera`, `0G`, `world`)
+- [02 — Bounty texts](./02-bounty/) — raw bounty texts from the three sponsors (`hedera`, `0G`, `world`), plus our submission form answer + sponsor feedback per sponsor: [`hedera-submission.md`](./02-bounty/hedera-submission.md), [`0g-submission.md`](./02-bounty/0g-submission.md), [`world-submission.md`](./02-bounty/world-submission.md)
 - [03 — Architecture & bounty map](./03-architecture-bounty-map.md) — **the primary plan**: the three human roles (World verification tiers), the two verification agents on 0G Compute, the Hedera settlement layer (HCS + HTS + settle agent), and which bounty each component closes
 - [04 — Integration contract](./04-integration-contract.md) — the World ↔ Hedera/0G ↔ platform boundary: payout authorization, credential lookup, engagement verdicts
 - [05 — Submission checklist](./05-submission-checklist.md) — event rules, per-sponsor requirements and disqualifiers, and the pre-submission checklist
