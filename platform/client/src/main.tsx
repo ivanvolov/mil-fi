@@ -8,6 +8,7 @@ import { SandboxPage } from './routes/SandboxPage';
 import { ReleasesPage } from './routes/ReleasesPage';
 import { SettlementPage } from './routes/SettlementPage';
 import { EngagementPage } from './routes/EngagementPage';
+import { GovernmentPage } from './routes/GovernmentPage';
 import { SpotterPage } from './routes/SpotterPage';
 import { LoginPage } from './pages/Login';
 import { RequireAuth } from './pages/RequireAuth';
