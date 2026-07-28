@@ -1,7 +1,13 @@
 # Render Blueprint — must live at the repo root for Render to auto-detect it.
 # One web service: the Fastify server builds the client SPA and serves both the
 # API and the SPA from the same origin (SERVE_STATIC=true). The World mini-app in
-# app/ deploys separately (e.g. Vercel) — it is not part of this blueprint.
+# app/ deploys separately — it is not part of this blueprint.
+#
+# Secrets come from Infisical (EU) at boot: `npm run start:infisical` wraps the
+# server in `infisical run`, which injects everything stored under project HOC
+# env=dev folder /mil-fi. The ONLY secret to paste in the Render dashboard is
+# INFISICAL_TOKEN — a service token scoped to env=dev, path=/mil-fi (read).
+# All other env vars (Mongo, OpenAI, Hedera, World, …) live in Infisical.
 services:
   # Production — auto-deploys from `main`.
   - type: web
@@ -12,77 +18,33 @@ services:
     branch: main
     rootDir: platform            # build/start scripts live in platform/package.json
     buildCommand: npm run build:all
-    startCommand: npm start
+    startCommand: npm run start:infisical
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: SERVE_STATIC
         value: "true"
-      - key: MONGODB_DB
-        value: milfy-app
 
-      # ─── Non-secret config (safe to commit) ──────────────────────────────
-      - key: ZG_ROUTER_BASE_URL
-        value: https://router-api-testnet.integratenetwork.work/v1
-      - key: ZG_MODEL
-        value: qwen2.5-omni
-      - key: HEDERA_NETWORK
-        value: testnet
-      - key: HEDERA_KEY_TYPE
-        value: ECDSA
-      - key: HEDERA_OPERATOR_ID
-        value: "0.0.9713724"
-      - key: HEDERA_DEFPOINT_TOKEN_ID
-        value: "0.0.9753000"
-      - key: HEDERA_EVIDENCE_TOPIC_ID
-        value: "0.0.9753001"
+      # ─── Infisical — where the service token goes ────────────────────────
+      # Dashboard → mil-fi service → Environment → add INFISICAL_TOKEN with a
+      # service token from eu.infisical.com (project HOC → env dev → /mil-fi).
+      - key: INFISICAL_TOKEN
+        sync: false
+      # EU cloud endpoint — the CLI reads this env var automatically.
+      - key: INFISICAL_API_URL
+        value: https://eu.infisical.com/api
+      - key: INFISICAL_PROJECT_ID
+        value: 1c02be0d-3fed-4e98-aa38-d02f4eb3a03b
+      - key: INFISICAL_ENV
+        value: dev
+      - key: INFISICAL_SECRET_PATH
+        value: /mil-fi
 
-      # ─── Secrets — set directly on the service in the Render dashboard ────
-      # (sync: false means Render won't read them from this file; paste them in
-      #  the dashboard once. Values are in the repo-root .env, which is gitignored.)
-      - key: MONGODB_URI
-        sync: false
-      - key: SESSION_SECRET
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: OG_API_KEY
-        sync: false
-      - key: OG_API_KEY_TEE
-        sync: false
-      - key: ZG_ROUTER_API_KEY
-        sync: false
-      - key: HEDERA_OPERATOR_KEY
-        sync: false
-      - key: RENDER_WEBHOOK_SECRET
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_CHAT_ID
-        sync: false
-      # World integration — optional, fill once World publishes them.
-      - key: WORLD_BASE_URL
-        sync: false
-      - key: WORLD_SERVICE_TOKEN
-        sync: false
-      - key: WORLD_SIGNER_ADDRESS
-        sync: false
-      # Claim-agent AgentKit identity key (docs/06-agentkit.md). Registered in
-      # AgentBook on World Chain; signs payout claims, holds no funds.
-      - key: AGENT_WALLET_KEY
-        sync: false
-
-      # World ID one-time verification gate (server/src/auth/worldVerify.ts).
-      # Same Developer Portal app as app/my-first-mini-app/.env.local — reusing it
-      # instead of provisioning a second Relying Party.
-      - key: RP_SIGNING_KEY
-        sync: false
-      - key: RP_ID
-        value: "rp_ce4e751875b77790"
-
-      # Non-secret — read client-side by the World ID QR widget (VITE_ vars are
-      # baked into the built bundle at `npm run build:all` time).
+      # ─── Build-time only — Vite bakes VITE_ vars into the client bundle at
+      #     `npm run build:all` time, before `infisical run` exists, so they
+      #     must stay real Render env vars (runtime copies also sit in
+      #     Infisical, same values). ─────────────────────────────────────────
       - key: VITE_WORLD_APP_ID
         value: "app_3e54fa415d153fbd5fd72033452b27f8"
       # staging = verification completes via the simulator link under the QR (no
