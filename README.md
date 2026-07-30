@@ -230,7 +230,7 @@ into the ₴150B (~$3.3B USD) marketplace and the MoD's unit-budget restructurin
 ## AI-tool attribution
 
 This project was built extensively with **Claude Code** (Anthropic) across all three components:
-14 of the repo's 28 commits are Claude-co-authored. Planning artifacts, specs, and prompts used
+17 of the repo's 42 commits are Claude-co-authored. Planning artifacts, specs, and prompts used
 throughout the build live in [`docs/`](./docs) and `app/.claude/` — included in this repo, not
 hidden, per the event's AI-attribution rule.
 
